@@ -1,7 +1,82 @@
 import tkinter as tk
-from tkinter import messagebox
+import random
 
-class Node:
+# ==== Tạo giao diện ====
+root = tk.Tk()
+root.title("Binary Tree")
+root.geometry("1000x600")
+root.configure(bg="#e5e5e5")
+
+# ====== Menu ngang ======
+menu_frame = tk.Frame(root, bg="#384F41", height=50)
+menu_frame.pack(fill="x")
+menu_items = ["Binary Tree", "Binary Search Tree", "AVL Tree"]
+labels = []
+
+# ====== Hover ======
+def on_enter(event):
+    event.widget.config(fg="white")
+def on_leave(event):
+    event.widget.config(fg="#facc45")
+
+for i, item in enumerate(menu_items):
+    container = tk.Frame(menu_frame, bg="#1b501b")
+    container.grid(row=0, column=i, sticky="nsew")
+    menu_frame.grid_columnconfigure(i, weight=1)
+
+    btn = tk.Label(
+        menu_frame, text=item,
+        font=("Arial", 16, "bold"),
+        fg="#facc45", bg="#1b501b",
+        width=25, height=2,
+        relief="solid", bd=1
+    )
+    btn.grid(row=0, column=i, sticky="nsew")
+    btn.bind("<Enter>", on_enter)
+    btn.bind("<Leave>", on_leave)
+    labels.append(btn)
+
+for i in range(3):
+    menu_frame.grid_columnconfigure(i, weight=1)
+
+# ====== thanh bar_frame chứa các nút ======
+wrapper = tk.Frame(root, height=40)
+wrapper.pack(fill="x")
+
+bar_frame = tk.Frame(wrapper, bg="#DCD7CD")
+bar_frame.pack(fill="both", expand=True)
+# Entry nhỏ để nhập giá trị node
+entry = tk.Entry(bar_frame, width=10, font=("Arial", 20))
+entry.pack(side="left", padx=(5, 10), pady=5)
+
+# Các nút chức năng với style nhẹ
+button_style = {
+    "bg": "#d3d3d3",  # xám nhạt
+    "font": ("Arial", 16, "bold"),
+    "relief": "flat",
+    "padx": 10,
+    "pady": 5
+}
+
+btn_insert = tk.Button(bar_frame, text="Insert", command=lambda: insert_node(), **button_style)
+btn_insert.pack(side="left", padx=5)
+
+btn_delete = tk.Button(bar_frame, text="Delete", command=lambda: delete_node(), **button_style)
+btn_delete.pack(side="left", padx=5)
+
+btn_generate = tk.Button(bar_frame, text="Generate random trees", command=lambda: generate_random_tree(), **button_style)
+btn_generate.pack(side="left", padx=5)
+
+# Vùng chính để vẽ cây
+main_area = tk.Frame(root, bg="#eaeaea", width=600, height=350)
+main_area.pack(padx=20, pady=20, fill="both", expand=True)
+
+# Thêm canvas để vẽ cây vào main_area
+canvas = tk.Canvas(main_area, bg="#ffffff")
+canvas.pack(fill="both", expand=True)
+
+# ====== Cây nhị phân ======
+class TreeNode:
     def __init__(self, value):
         self.value = value
         self.left = None
@@ -12,83 +87,62 @@ class BinaryTree:
         self.root = None
 
     def insert(self, value):
-        if not self.root:
-            self.root = Node(value)
-        else:
-            self._insert_recursive(self.root, value)
-
-    def _insert_recursive(self, node, value):
-        if value < node.value:
-            if node.left is None:
-                node.left = Node(value)
+        def _insert(node, val):
+            if node is None:
+                return TreeNode(val)
+            if val < node.value:
+                node.left = _insert(node.left, val)
             else:
-                self._insert_recursive(node.left, value)
-        else:
-            if node.right is None:
-                node.right = Node(value)
-            else:
-                self._insert_recursive(node.right, value)
+                node.right = _insert(node.right, val)
+            return node
+        self.root = _insert(self.root, value)
 
-    def inorder(self, node):
-        if node:
-            self.inorder(node.left)
-            print(node.value, end=" ")
-            self.inorder(node.right)
+    def clear(self):
+        self.root = None
 
-class BinaryTreeApp:
-    def __init__(self, root):
-        self.tree = BinaryTree()
-        self.window = root
-        self.window.title("Quản lý Cây Nhị Phân")
+    def generate_random(self, count=7):
+        self.clear()
+        for _ in range(count):
+            self.insert(random.randint(1, 99))
 
-        # Cửa sổ giao diện
-        self.canvas = tk.Canvas(self.window, width=600, height=400, bg="white")
-        self.canvas.pack()
+tree = BinaryTree()
 
-        # Các widget
-        self.label = tk.Label(self.window, text="Nhập giá trị:")
-        self.label.pack()
+# ====== Vẽ cây lên canvas ======
+def draw_tree(node, x, y, dx=80, dy=60):
+    if node is None:
+        return
+    r = 20
+    canvas.create_oval(x - r, y - r, x + r, y + r, fill="#facc45", outline="#1b501b", width=2)
+    canvas.create_text(x, y, text=str(node.value), font=("Arial", 12, "bold"))
 
-        self.entry = tk.Entry(self.window)
-        self.entry.pack()
+    if node.left:
+        canvas.create_line(x, y + r, x - dx, y + dy - r, width=2)
+        draw_tree(node.left, x - dx, y + dy, dx * 0.8, dy)
+    if node.right:
+        canvas.create_line(x, y + r, x + dx, y + dy - r, width=2)
+        draw_tree(node.right, x + dx, y + dy, dx * 0.8, dy)
 
-        self.insert_button = tk.Button(self.window, text="Thêm vào cây", command=self.insert_value)
-        self.insert_button.pack()
+def render():
+    canvas.delete("all")
+    if tree.root:
+        draw_tree(tree.root, 500, 40)  # vị trí bắt đầu từ giữa
 
-        self.display_button = tk.Button(self.window, text="Hiển thị cây", command=self.display_tree)
-        self.display_button.pack()
+# ====== Chức năng các nút ======
+def insert_node():
+    try:
+        value = int(entry.get())
+        tree.insert(value)
+        render()
+    except ValueError:
+        print("Vui lòng nhập số nguyên hợp lệ")
 
-    def insert_value(self):
-        value = self.entry.get()
-        if value.isdigit():
-            self.tree.insert(int(value))
-            messagebox.showinfo("Thông báo", f"Đã thêm {value} vào cây.")
-            self.entry.delete(0, tk.END)
-        else:
-            messagebox.showerror("Lỗi", "Vui lòng nhập giá trị hợp lệ.")
+def delete_node():
+    tree.clear()
+    render()
 
-    def display_tree(self):
-        self.canvas.delete("all")
-        self._draw_tree(self.tree.root, 300, 50, 100, 50)
+def generate_random_tree():
+    tree.generate_random()
+    render()
 
-    def _draw_tree(self, node, x, y, dx, dy):
-        if node:
-            # Vẽ nút
-            self.canvas.create_oval(x-20, y-20, x+20, y+20, fill="lightblue")
-            self.canvas.create_text(x, y, text=str(node.value))
-
-            # Vẽ nhánh trái
-            if node.left:
-                self.canvas.create_line(x, y+20, x-dx, y+dy-20, arrow=tk.LAST)
-                self._draw_tree(node.left, x-dx, y+dy, dx//2, dy)
-
-            # Vẽ nhánh phải
-            if node.right:
-                self.canvas.create_line(x, y+20, x+dx, y+dy-20, arrow=tk.LAST)
-                self._draw_tree(node.right, x+dx, y+dy, dx//2, dy)
-
-# Khởi tạo giao diện
-root = tk.Tk()
-app = BinaryTreeApp(root)
+# ====== Chạy giao diện ======
 root.mainloop()
-
