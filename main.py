@@ -20,7 +20,8 @@ class BinaryTreeVisualizer:
         self.highlighted_node = None
         self.nodes_positions = []
         self.root = None  # Root tree
-
+        self.sidebar = None
+        
     def set_root(self, root):
         self.root = root
 
@@ -56,6 +57,10 @@ class BinaryTreeVisualizer:
             elif node.left is None:
                 node.left = new_node
         # Nếu cả 2 bên đều có rồi thì không thêm gì
+        if self.sidebar:
+            new_array = self.tree_to_array(self.root)
+            self.sidebar.array = new_array
+            self.sidebar.array_display.config(text=str(new_array))
 
     def draw_tree(self, root):
         self.canvas.delete("all")
@@ -71,11 +76,21 @@ class BinaryTreeVisualizer:
             self.canvas.create_line(x, y, x + x_offset, y + self.level_height)
             self._draw_subtree(node.right, x + x_offset, y + self.level_height, x_offset // 2)
 
-        color = "red" if node == self.highlighted_node else "white"
+        color = "grey" if node == self.highlighted_node else "white"
         self.canvas.create_oval(x - self.node_radius, y - self.node_radius,
                                 x + self.node_radius, y + self.node_radius, fill=color)
         self.canvas.create_text(x, y, text=str(node.val), font=("Arial", 12, "bold"))
         self.nodes_positions.append((x, y, node))
+    def tree_to_array(self, root):
+        result = []
+        queue = [root]
+        while queue:
+            current = queue.pop(0)
+            if current:
+                result.append(current.val)
+                queue.append(current.left)
+                queue.append(current.right)
+        return result
 
 
 # ==== HEADER ====
@@ -148,6 +163,7 @@ class Sidebar(tk.Frame):
             bd=10,
             relief="flat"
         )
+        
         self.array_display.pack(padx=20, fill="x", pady=(0, 20))
 
         search_title = tk.Label(self, text="Find:", font=("Arial", 18, "bold"), bg="grey", fg="black")
@@ -240,7 +256,7 @@ class Sidebar(tk.Frame):
         btn.bind("<Leave>", lambda e: btn.config(bg="white"))
         btn.bind("<Button-1>", lambda e: command())
 
-
+        
 # ==== MAIN ====
 if __name__ == "__main__":
     def show_page(name):
@@ -253,22 +269,17 @@ if __name__ == "__main__":
     root = tk.Tk()
     root.geometry("1200x700")
     root.title("TreeSim")
-
+    
     # Truyền show_page cho Header
     header = Header(root, on_menu_click=show_page)
-    
     sidebar = Sidebar(root)
-
     main_area = tk.Canvas(root, bg="lightgrey")
     main_area.pack(side="left", fill="both", expand=True)
-
     visualizer = BinaryTreeVisualizer(main_area)
     visualizer.bind_click_event()
-
     sidebar.visualizer = visualizer
-
     # Chọn trang mặc định là "Binary Tree"
     header.set_active("Binary Tree")
-
+    visualizer.sidebar = sidebar
     root.mainloop()
 
