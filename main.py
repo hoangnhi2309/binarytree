@@ -81,9 +81,12 @@ class BinaryTreeVisualizer:
 # ==== HEADER ====
 
 class Header(tk.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, on_menu_click):
         super().__init__(parent, bg="#b0b0b0")
         self.pack(fill='x')
+
+        self.on_menu_click = on_menu_click
+        self.menu_buttons = {}  # Lưu các nút menu
 
         logo_image = Image.open("binarytree.png").resize((75, 75))
         self.logo_photo = ImageTk.PhotoImage(logo_image)
@@ -96,21 +99,36 @@ class Header(tk.Frame):
             normal_font = ("Arial", 20, "bold")
             underline_font = ("Arial", 20, "bold", "underline")
 
-            btn = tk.Label(self, text=item, font=normal_font, bg="#b0b0b0", fg="black", cursor="hand2")
+            btn = tk.Label(self, text=item, font=normal_font,
+                           bg="#b0b0b0", fg="black", cursor="hand2")
             btn.pack(side="left", padx=30)
+            normal_font = ("Arial", 20, "bold")
 
+            underline_font = ("Arial", 20, "bold", "underline")
+            underline_thin_font = ("Arial", 20, "bold", "underline", "1")
             btn.bind("<Enter>", lambda e, b=btn: b.config(font=underline_font))
             btn.bind("<Leave>", lambda e, b=btn: b.config(font=normal_font))
+            btn.bind("<Button-1>", lambda e, name=item: self.menu_clicked(name))
 
+            self.menu_buttons[item] = btn
+
+    def menu_clicked(self, name):
+        self.set_active(name)
+        self.on_menu_click(name)
+
+    def set_active(self, active_name):
+        for name, btn in self.menu_buttons.items():
+            if name == active_name:
+                btn.config(fg="#164933", font=("Arial", 20, "bold", "underline"))
+            else:
+                btn.config(fg="black", font=("Arial", 20, "bold"))
 
 # ==== SIDEBAR ====
-
 class Sidebar(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent, bg="grey", width=400)
         self.pack(side="left", fill="y")
         self.pack_propagate(False)
-
         self.tree_root = None
         self.array = []
         self.visualizer = None
@@ -124,9 +142,9 @@ class Sidebar(tk.Frame):
             text="",
             bg="white",
             font=("Arial", 16),
-            anchor="w",
+            anchor="n",
             justify="left",
-            height=30,
+            height=20,
             bd=10,
             relief="flat"
         )
@@ -224,13 +242,21 @@ class Sidebar(tk.Frame):
 
 
 # ==== MAIN ====
-
 if __name__ == "__main__":
+    def show_page(name):
+        print(f"Chuyển đến trang: {name}")
+        header.set_active(name)  # Cập nhật màu menu
+        
+        # Tùy theo tên trang, bạn có thể thay đổi nội dung main_area
+        # Ví dụ: xóa canvas cũ, tạo cây mới, v.v.
+
     root = tk.Tk()
     root.geometry("1200x700")
-    root.title("Tree Simulator")
+    root.title("TreeSim")
 
-    header = Header(root)
+    # Truyền show_page cho Header
+    header = Header(root, on_menu_click=show_page)
+    
     sidebar = Sidebar(root)
 
     main_area = tk.Canvas(root, bg="lightgrey")
@@ -241,4 +267,8 @@ if __name__ == "__main__":
 
     sidebar.visualizer = visualizer
 
+    # Chọn trang mặc định là "Binary Tree"
+    header.set_active("Binary Tree")
+
     root.mainloop()
+
