@@ -1,148 +1,244 @@
 import tkinter as tk
+import ttkbootstrap as ttk
+import tkinter.messagebox as messagebox
+from PIL import Image, ImageTk
 import random
 
-# ==== Tạo giao diện ====
-root = tk.Tk()
-root.title("Binary Tree")
-root.geometry("1000x600")
-root.configure(bg="#e5e5e5")
+# ==== Cây nhị phân đơn giản ====
 
-# ====== Menu ngang ======
-menu_frame = tk.Frame(root, bg="#384F41", height=50)
-menu_frame.pack(fill="x")
-menu_items = ["Binary Tree", "Binary Search Tree", "AVL Tree"]
-labels = []
-
-# ====== Hover ======
-def on_enter(event):
-    event.widget.config(fg="white")
-def on_leave(event):
-    event.widget.config(fg="#facc45")
-
-for i, item in enumerate(menu_items):
-    container = tk.Frame(menu_frame, bg="#1b501b")
-    container.grid(row=0, column=i, sticky="nsew")
-    menu_frame.grid_columnconfigure(i, weight=1)
-
-    btn = tk.Label(
-        menu_frame, text=item,
-        font=("Arial", 16, "bold"),
-        fg="#facc45", bg="#1b501b",
-        width=25, height=2,
-        relief="solid", bd=1
-    )
-    btn.grid(row=0, column=i, sticky="nsew")
-    btn.bind("<Enter>", on_enter)
-    btn.bind("<Leave>", on_leave)
-    labels.append(btn)
-
-for i in range(3):
-    menu_frame.grid_columnconfigure(i, weight=1)
-
-# ====== thanh bar_frame chứa các nút ======
-wrapper = tk.Frame(root, height=40)
-wrapper.pack(fill="x")
-
-bar_frame = tk.Frame(wrapper, bg="#DCD7CD")
-bar_frame.pack(fill="both", expand=True)
-# Entry nhỏ để nhập giá trị node
-entry = tk.Entry(bar_frame, width=10, font=("Arial", 20))
-entry.pack(side="left", padx=(5, 10), pady=5)
-
-# Các nút chức năng với style nhẹ
-button_style = {
-    "bg": "#d3d3d3",  # xám nhạt
-    "font": ("Arial", 16, "bold"),
-    "relief": "flat",
-    "padx": 10,
-    "pady": 5
-}
-
-btn_insert = tk.Button(bar_frame, text="Insert", command=lambda: insert_node(), **button_style)
-btn_insert.pack(side="left", padx=5)
-
-btn_delete = tk.Button(bar_frame, text="Delete", command=lambda: delete_node(), **button_style)
-btn_delete.pack(side="left", padx=5)
-
-btn_generate = tk.Button(bar_frame, text="Generate random trees", command=lambda: generate_random_tree(), **button_style)
-btn_generate.pack(side="left", padx=5)
-
-# Vùng chính để vẽ cây
-main_area = tk.Frame(root, bg="#eaeaea", width=600, height=350)
-main_area.pack(padx=20, pady=20, fill="both", expand=True)
-
-# Thêm canvas để vẽ cây vào main_area
-canvas = tk.Canvas(main_area, bg="#ffffff")
-canvas.pack(fill="both", expand=True)
-
-# ====== Cây nhị phân ======
 class TreeNode:
     def __init__(self, value):
-        self.value = value
+        self.val = value
         self.left = None
         self.right = None
 
-class BinaryTree:
-    def __init__(self):
-        self.root = None
+class BinaryTreeVisualizer:
+    def __init__(self, canvas):
+        self.canvas = canvas
+        self.node_radius = 20
+        self.level_height = 80
+        self.highlighted_node = None
+        self.nodes_positions = []
+        self.root = None  # Root tree
 
-    def insert(self, value):
-        def _insert(node, val):
-            if node is None:
-                return TreeNode(val)
-            if val < node.value:
-                node.left = _insert(node.left, val)
+    def set_root(self, root):
+        self.root = root
+
+    def get_root(self):
+        return self.root
+
+    def bind_click_event(self):
+        self.canvas.bind("<Button-1>", self.on_canvas_click)
+
+    def on_canvas_click(self, event):
+        x_click, y_click = event.x, event.y
+        for x, y, node in self.nodes_positions:
+            dx = x_click - x
+            dy = y_click - y
+            distance = (dx**2 + dy**2) ** 0.5
+            if distance <= self.node_radius:
+                self.add_random_child(node)
+                self.draw_tree(self.root)
+                break
+
+    def add_random_child(self, node):
+        new_value = random.randint(1, 100)
+        new_node = TreeNode(new_value)
+        direction = random.choice(["left", "right"])
+        if direction == "left":
+            if node.left is None:
+                node.left = new_node
+            elif node.right is None:
+                node.right = new_node
+        else:
+            if node.right is None:
+                node.right = new_node
+            elif node.left is None:
+                node.left = new_node
+        # Nếu cả 2 bên đều có rồi thì không thêm gì
+
+    def draw_tree(self, root):
+        self.canvas.delete("all")
+        self.nodes_positions = []
+        if root:
+            self._draw_subtree(root, 500, 40, 250)
+
+    def _draw_subtree(self, node, x, y, x_offset):
+        if node.left:
+            self.canvas.create_line(x, y, x - x_offset, y + self.level_height)
+            self._draw_subtree(node.left, x - x_offset, y + self.level_height, x_offset // 2)
+        if node.right:
+            self.canvas.create_line(x, y, x + x_offset, y + self.level_height)
+            self._draw_subtree(node.right, x + x_offset, y + self.level_height, x_offset // 2)
+
+        color = "red" if node == self.highlighted_node else "white"
+        self.canvas.create_oval(x - self.node_radius, y - self.node_radius,
+                                x + self.node_radius, y + self.node_radius, fill=color)
+        self.canvas.create_text(x, y, text=str(node.val), font=("Arial", 12, "bold"))
+        self.nodes_positions.append((x, y, node))
+
+
+# ==== HEADER ====
+
+class Header(tk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent, bg="#b0b0b0")
+        self.pack(fill='x')
+
+        logo_image = Image.open("binarytree.png").resize((75, 75))
+        self.logo_photo = ImageTk.PhotoImage(logo_image)
+
+        logo_label = tk.Label(self, image=self.logo_photo, bg="#b0b0b0")
+        logo_label.pack(side="left", padx=(10, 5), pady=5)
+
+        menu_items = ["Binary Tree", "Binary Search Tree", "AVL Tree"]
+        for item in menu_items:
+            normal_font = ("Arial", 20, "bold")
+            underline_font = ("Arial", 20, "bold", "underline")
+
+            btn = tk.Label(self, text=item, font=normal_font, bg="#b0b0b0", fg="black", cursor="hand2")
+            btn.pack(side="left", padx=30)
+
+            btn.bind("<Enter>", lambda e, b=btn: b.config(font=underline_font))
+            btn.bind("<Leave>", lambda e, b=btn: b.config(font=normal_font))
+
+
+# ==== SIDEBAR ====
+
+class Sidebar(tk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent, bg="grey", width=400)
+        self.pack(side="left", fill="y")
+        self.pack_propagate(False)
+
+        self.tree_root = None
+        self.array = []
+        self.visualizer = None
+        self.highlighted_node = None
+
+        array_label = tk.Label(self, text="Array:", font=("Arial", 20, "bold"), bg="grey", fg="black")
+        array_label.pack(anchor="w", padx=20, pady=(0, 1))
+
+        self.array_display = tk.Label(
+            self,
+            text="",
+            bg="white",
+            font=("Arial", 16),
+            anchor="w",
+            justify="left",
+            height=30,
+            bd=10,
+            relief="flat"
+        )
+        self.array_display.pack(padx=20, fill="x", pady=(0, 20))
+
+        search_title = tk.Label(self, text="Find:", font=("Arial", 18, "bold"), bg="grey", fg="black")
+        search_title.pack(anchor="w", padx=20, pady=(10, 5))
+
+        search_frame = tk.Frame(self, relief="flat", bg="grey", bd=5, highlightthickness=0)
+        search_frame.pack(fill="x", padx=20)
+
+        self.search_entry = tk.Entry(search_frame, font=("Arial", 12))
+        self.search_entry.pack(side="left", fill="x", expand=True)
+
+        search_btn = tk.Button(
+            search_frame,
+            text="🔍",
+            font=("Arial", 12),
+            relief="flat",
+            bg="grey",
+            command=self.on_search_node
+        )
+        search_btn.pack(side="left", padx=(5, 0))
+
+        self.create_modern_button("Create random tree", self.on_random_tree)
+        self.create_modern_button("Delete", self.on_clear_tree)
+
+    def on_search_node(self):
+        value = self.search_entry.get()
+        if value.isdigit():
+            value = int(value)
+            if value in self.array:
+                self.highlighted_node = self._find_node(self.tree_root, value)
+                if self.visualizer:
+                    self.visualizer.highlighted_node = self.highlighted_node
+                    self.visualizer.draw_tree(self.tree_root)
             else:
-                node.right = _insert(node.right, val)
-            return node
-        self.root = _insert(self.root, value)
+                messagebox.showinfo("Node Not Found", f"Node {value} not found in the array.")
+        else:
+            messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
 
-    def clear(self):
-        self.root = None
+    def _find_node(self, root, value):
+        if root is None:
+            return None
+        if root.val == value:
+            return root
+        left_result = self._find_node(root.left, value)
+        if left_result:
+            return left_result
+        return self._find_node(root.right, value)
 
-    def generate_random(self, count=7):
-        self.clear()
-        for _ in range(count):
-            self.insert(random.randint(1, 99))
+    def on_random_tree(self):
+        self.array = random.sample(range(1, 100), 7)
+        self.array_display.config(text=str(self.array))
+        self.tree_root = self.build_tree_from_list(self.array)
+        if self.visualizer:
+            self.visualizer.set_root(self.tree_root)
+            self.visualizer.draw_tree(self.tree_root)
 
-tree = BinaryTree()
+    def on_clear_tree(self):
+        self.tree_root = None
+        self.array = []
+        self.highlighted_node = None
+        self.array_display.config(text="")
+        if self.visualizer:
+            self.visualizer.canvas.delete("all")
 
-# ====== Vẽ cây lên canvas ======
-def draw_tree(node, x, y, dx=80, dy=60):
-    if node is None:
-        return
-    r = 20
-    canvas.create_oval(x - r, y - r, x + r, y + r, fill="#facc45", outline="#1b501b", width=2)
-    canvas.create_text(x, y, text=str(node.value), font=("Arial", 12, "bold"))
+    def build_tree_from_list(self, lst):
+        if not lst:
+            return None
+        nodes = [TreeNode(val) for val in lst]
+        for i in range(len(lst)):
+            left_index = 2 * i + 1
+            right_index = 2 * i + 2
+            if left_index < len(lst):
+                nodes[i].left = nodes[left_index]
+            if right_index < len(lst):
+                nodes[i].right = nodes[right_index]
+        return nodes[0]
 
-    if node.left:
-        canvas.create_line(x, y + r, x - dx, y + dy - r, width=2)
-        draw_tree(node.left, x - dx, y + dy, dx * 0.8, dy)
-    if node.right:
-        canvas.create_line(x, y + r, x + dx, y + dy - r, width=2)
-        draw_tree(node.right, x + dx, y + dy, dx * 0.8, dy)
+    def create_modern_button(self, text, command):
+        btn = tk.Label(
+            self,
+            text=text,
+            font=("Arial", 14),
+            bg="#ffffff",
+            fg="#333333",
+            bd=2,
+            cursor="hand2"
+        )
+        btn.pack(padx=20, fill="x", pady=(10, 5))
+        btn.bind("<Enter>", lambda e: btn.config(bg="#e0e0e0"))
+        btn.bind("<Leave>", lambda e: btn.config(bg="white"))
+        btn.bind("<Button-1>", lambda e: command())
 
-def render():
-    canvas.delete("all")
-    if tree.root:
-        draw_tree(tree.root, 500, 40)  # vị trí bắt đầu từ giữa
 
-# ====== Chức năng các nút ======
-def insert_node():
-    try:
-        value = int(entry.get())
-        tree.insert(value)
-        render()
-    except ValueError:
-        print("Vui lòng nhập số nguyên hợp lệ")
+# ==== MAIN ====
 
-def delete_node():
-    tree.clear()
-    render()
+if __name__ == "__main__":
+    root = tk.Tk()
+    root.geometry("1200x700")
+    root.title("Tree Simulator")
 
-def generate_random_tree():
-    tree.generate_random()
-    render()
+    header = Header(root)
+    sidebar = Sidebar(root)
 
-# ====== Chạy giao diện ======
-root.mainloop()
+    main_area = tk.Canvas(root, bg="lightgrey")
+    main_area.pack(side="left", fill="both", expand=True)
+
+    visualizer = BinaryTreeVisualizer(main_area)
+    visualizer.bind_click_event()
+
+    sidebar.visualizer = visualizer
+
+    root.mainloop()
