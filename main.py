@@ -323,6 +323,162 @@ class Sidebar(tk.Frame):
         btn.bind("<Enter>", lambda e: btn.config(bg="#e0e0e0"))
         btn.bind("<Leave>", lambda e: btn.config(bg="white"))
         btn.bind("<Button-1>", lambda e: command())
+
+class Sidebar(tk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent, bg="grey", width=400)
+        self.pack(side="left", fill="y")
+        self.pack_propagate(False)
+        self.tree_root = None
+        self.array = []
+        self.visualizer = None
+        self.highlighted_node = None
+
+        array_label = tk.Label(self, text="Array:", font=("Arial", 20, "bold"), bg="grey", fg="black")
+        array_label.pack(anchor="w", padx=20, pady=(0, 1))
+
+        self.array_display = tk.Label(
+            self,
+            text="",
+            bg="white",
+            font=("Arial", 16),
+            anchor="n",
+            justify="left",
+            height=20,
+            bd=10,
+            relief="flat"
+        )
+        
+        self.array_display.pack(padx=20, fill="x", pady=(0, 20))
+
+        search_title = tk.Label(self, text="Find:", font=("Arial", 18, "bold"), bg="grey", fg="black")
+        search_title.pack(anchor="w", padx=20, pady=(10, 5))
+
+        search_frame = tk.Frame(self, relief="flat", bg="grey", bd=5, highlightthickness=0)
+        search_frame.pack(fill="x", padx=20)
+
+        self.search_entry = tk.Entry(search_frame, font=("Arial", 12))
+        self.search_entry.pack(side="left", fill="x", expand=True)
+
+        search_btn = tk.Button(
+            search_frame,
+            text="🔍",
+            font=("Arial", 12),
+            relief="flat",
+            bg="grey",
+            command=self.on_search_node
+        )
+        search_btn.pack(side="left", padx=(5, 0))
+
+        self.create_modern_button("Create random tree", self.on_random_tree)
+        self.create_modern_button("Delete", self.on_clear_tree)
+        self.create_modern_button("Create custom tree", self.on_create_custom_tree)  # Thêm nút tạo cây tùy chỉnh
+
+    def on_create_custom_tree(self):
+        self.show_create_tree_popup()
+
+    def show_create_tree_popup(self):
+        # Tạo cửa sổ popup
+        popup = tk.Toplevel(self)
+        popup.title("Create Custom Tree")
+        popup.geometry("300x200")
+        popup.transient(self.winfo_toplevel())
+
+        tk.Label(popup, text="Enter Min Value:", font=("Arial", 12)).pack(pady=10)
+        min_entry = tk.Entry(popup, font=("Arial", 12))
+        min_entry.pack(pady=5)
+
+        tk.Label(popup, text="Enter Max Value:", font=("Arial", 12)).pack(pady=10)
+        max_entry = tk.Entry(popup, font=("Arial", 12))
+        max_entry.pack(pady=5)
+
+        def create_tree():
+            try:
+                min_value = int(min_entry.get())
+                max_value = int(max_entry.get())
+                if min_value >= max_value:
+                    raise ValueError("Min value must be less than Max value.")
+                self.array = random.sample(range(min_value, max_value + 1), 7)  # Tạo mảng ngẫu nhiên trong khoảng min và max
+                self.array_display.config(text=str(self.array))
+                self.tree_root = self.build_tree_from_list(self.array)
+                if self.visualizer:
+                    self.visualizer.set_root(self.tree_root)
+                    self.visualizer.draw_tree(self.tree_root)
+                popup.destroy()
+            except ValueError as ve:
+                messagebox.showwarning("Invalid Input", str(ve))
+
+        create_btn = tk.Button(popup, text="Create Tree", font=("Arial", 12), command=create_tree)
+        create_btn.pack(pady=10)
+
+    def on_search_node(self):
+        value = self.search_entry.get()
+        if value.isdigit():
+            value = int(value)
+            if value in self.array:
+                self.highlighted_node = self._find_node(self.tree_root, value)
+                if self.visualizer:
+                    self.visualizer.highlighted_node = self.highlighted_node
+                    self.visualizer.draw_tree(self.tree_root)
+            else:
+                messagebox.showinfo("Node Not Found", f"Node {value} not found in the array.")
+        else:
+            messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
+
+    def _find_node(self, root, value):
+        if root is None:
+            return None
+        if root.val == value:
+            return root
+        left_result = self._find_node(root.left, value)
+        if left_result:
+            return left_result
+        return self._find_node(root.right, value)
+
+    def on_random_tree(self):
+        self.array = random.sample(range(1, 100), 7)
+        self.array_display.config(text=str(self.array))
+        self.tree_root = self.build_tree_from_list(self.array)
+        if self.visualizer:
+            self.visualizer.set_root(self.tree_root)
+            self.visualizer.draw_tree(self.tree_root)
+
+    def on_clear_tree(self):
+        self.tree_root = None
+        self.array = []
+        self.highlighted_node = None
+        self.array_display.config(text="")
+        if self.visualizer:
+            self.visualizer.canvas.delete("all")
+
+    def build_tree_from_list(self, lst):
+        if not lst:
+            return None
+        nodes = [TreeNode(val) for val in lst]
+        for i in range(len(lst)):
+            left_index = 2 * i + 1
+            right_index = 2 * i + 2
+            if left_index < len(lst):
+                nodes[i].left = nodes[left_index]
+            if right_index < len(lst):
+                nodes[i].right = nodes[right_index]
+        return nodes[0]
+
+    def create_modern_button(self, text, command):
+        btn = tk.Label(
+            self,
+            text=text,
+            font=("Arial", 14),
+            bg="#ffffff",
+            fg="#333333",
+            bd=2,
+            cursor="hand2"
+        )
+        btn.pack(padx=20, fill="x", pady=(10, 5))
+        btn.bind("<Enter>", lambda e: btn.config(bg="#e0e0e0"))
+        btn.bind("<Leave>", lambda e: btn.config(bg="white"))
+        btn.bind("<Button-1>", lambda e: command())
+
         
 # ==== MAIN ====
 if __name__ == "__main__":
