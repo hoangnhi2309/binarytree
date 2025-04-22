@@ -1,11 +1,9 @@
 import tkinter as tk
-import ttkbootstrap as ttk
-import tkinter.messagebox as messagebox
-from PIL import Image, ImageTk
+from tkinter import messagebox
 import random
+from PIL import Image, ImageTk
 
-# ==== Cây nhị phân đơn giản ====
-
+# ==== Các lớp và hàm đã cung cấp ==== 
 class TreeNode:
     def __init__(self, value):
         self.val = value
@@ -19,7 +17,7 @@ class BinaryTreeVisualizer:
         self.level_height = 80
         self.highlighted_node = None
         self.nodes_positions = []
-        self.root = None  # Root tree
+        self.root = None
         self.sidebar = None
         
     def set_root(self, root):
@@ -29,18 +27,92 @@ class BinaryTreeVisualizer:
         return self.root
 
     def bind_click_event(self):
-        self.canvas.bind("<Button-1>", self.on_canvas_click)
-
-    def on_canvas_click(self, event):
+        self.canvas.bind("<Button-1>", self.on_canvas_left_click)  # Chuột trái
+        self.canvas.bind("<Button-3>", self.on_canvas_right_click)  # Chuột phải
+    
+    def on_canvas_left_click(self, event):
         x_click, y_click = event.x, event.y
         for x, y, node in self.nodes_positions:
             dx = x_click - x
             dy = y_click - y
             distance = (dx**2 + dy**2) ** 0.5
             if distance <= self.node_radius:
-                self.add_random_child(node)
-                self.draw_tree(self.root)
+                self.selected_node = node  # Lưu node được chọn
+                self.draw_tree(self.root)  # Vẽ lại cây để cập nhật màu sắc
                 break
+    
+    def on_canvas_right_click(self, event):
+        x_click, y_click = event.x, event.y
+        for x, y, node in self.nodes_positions:
+            dx = x_click - x
+            dy = y_click - y
+            distance = (dx**2 + dy**2) ** 0.5
+            if distance <= self.node_radius:
+                self.show_edit_popup(node)  # Hiển thị khung chỉnh sửa
+                break
+    
+    def _draw_subtree(self, node, x, y, x_offset):
+        if node.left:
+            self.canvas.create_line(x, y, x - x_offset, y + self.level_height)
+            self._draw_subtree(node.left, x - x_offset, y + self.level_height, x_offset // 2)
+        if node.right:
+            self.canvas.create_line(x, y, x + x_offset, y + self.level_height)
+            self._draw_subtree(node.right, x + x_offset, y + self.level_height, x_offset // 2)
+
+        # Đổi màu node được chọn sang màu xanh
+        if node == self.selected_node:
+            color = "green"
+        elif node == self.highlighted_node:
+            color = "grey"
+        else:
+            color = "white"
+
+        self.canvas.create_oval(x - self.node_radius, y - self.node_radius,
+                                x + self.node_radius, y + self.node_radius, fill=color)
+        self.canvas.create_text(x, y, text=str(node.val), font=("Arial", 12, "bold"))
+        self.nodes_positions.append((x, y, node))
+    
+    def show_edit_popup(self, node):
+        popup = tk.Toplevel()
+        popup.title("Edit Node")
+        popup.geometry("300x200")
+        popup.transient(self.canvas.winfo_toplevel())  # Center relative to main window
+
+        tk.Label(popup, text=f"Node Value: {node.val}", font=("Arial", 14)).pack(pady=10)
+
+        # Entry to update node value
+        tk.Label(popup, text="New Value:", font=("Arial", 12)).pack(pady=5)
+        new_value_entry = tk.Entry(popup, font=("Arial", 12))
+        new_value_entry.pack(pady=5)
+
+        # Update button
+        def update_node():
+            new_value = new_value_entry.get()
+            if new_value.isdigit():
+                node.val = int(new_value)
+                self.draw_tree(self.root)
+                popup.destroy()
+            else:
+                messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
+
+        tk.Button(popup, text="Update", command=update_node, font=("Arial", 12)).pack(pady=5)
+
+        # Delete button
+        def delete_node():
+            self.delete_node(self.root, node)
+            self.draw_tree(self.root)
+            popup.destroy()
+
+        tk.Button(popup, text="Delete", command=delete_node, font=("Arial", 12), fg="red").pack(pady=5)
+
+    def delete_node(self, root, target_node):
+        if root is None:
+            return None
+        if root == target_node:
+            return None  # Remove the node by returning None
+        root.left = self.delete_node(root.left, target_node)
+        root.right = self.delete_node(root.right, target_node)
+        return root
 
     def add_random_child(self, node):
         new_value = random.randint(1, 100)
@@ -81,6 +153,7 @@ class BinaryTreeVisualizer:
                                 x + self.node_radius, y + self.node_radius, fill=color)
         self.canvas.create_text(x, y, text=str(node.val), font=("Arial", 12, "bold"))
         self.nodes_positions.append((x, y, node))
+        
     def tree_to_array(self, root):
         result = []
         queue = [root]
@@ -94,14 +167,13 @@ class BinaryTreeVisualizer:
 
 
 # ==== HEADER ====
-
 class Header(tk.Frame):
     def __init__(self, parent, on_menu_click):
         super().__init__(parent, bg="#b0b0b0")
         self.pack(fill='x')
 
         self.on_menu_click = on_menu_click
-        self.menu_buttons = {}  # Lưu các nút menu
+        self.menu_buttons = {}
 
         logo_image = Image.open("binarytree.png").resize((75, 75))
         self.logo_photo = ImageTk.PhotoImage(logo_image)
@@ -117,10 +189,6 @@ class Header(tk.Frame):
             btn = tk.Label(self, text=item, font=normal_font,
                            bg="#b0b0b0", fg="black", cursor="hand2")
             btn.pack(side="left", padx=30)
-            normal_font = ("Arial", 20, "bold")
-
-            underline_font = ("Arial", 20, "bold", "underline")
-            underline_thin_font = ("Arial", 20, "bold", "underline", "1")
             btn.bind("<Enter>", lambda e, b=btn: b.config(font=underline_font))
             btn.bind("<Leave>", lambda e, b=btn: b.config(font=normal_font))
             btn.bind("<Button-1>", lambda e, name=item: self.menu_clicked(name))
@@ -255,7 +323,6 @@ class Sidebar(tk.Frame):
         btn.bind("<Enter>", lambda e: btn.config(bg="#e0e0e0"))
         btn.bind("<Leave>", lambda e: btn.config(bg="white"))
         btn.bind("<Button-1>", lambda e: command())
-
         
 # ==== MAIN ====
 if __name__ == "__main__":
@@ -282,4 +349,3 @@ if __name__ == "__main__":
     header.set_active("Binary Tree")
     visualizer.sidebar = sidebar
     root.mainloop()
-
