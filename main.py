@@ -2,7 +2,9 @@ import tkinter as tk
 import ttkbootstrap as ttk
 import tkinter.messagebox as messagebox
 from PIL import Image, ImageTk
+from tkinter import filedialog
 import random
+import json
 
 # ==== Cây nhị phân đơn giản ====
 
@@ -144,6 +146,7 @@ class Sidebar(tk.Frame):
         super().__init__(parent, bg="grey", width=400)
         self.pack(side="left", fill="y")
         self.pack_propagate(False)
+        
         self.tree_root = None
         self.array = []
         self.visualizer = None
@@ -184,10 +187,10 @@ class Sidebar(tk.Frame):
             command=self.on_search_node
         )
         search_btn.pack(side="left", padx=(5, 0))
-
         self.create_modern_button("Create random tree", self.on_random_tree)
         self.create_modern_button("Delete", self.on_clear_tree)
-
+        self.create_modern_button("Save tree", self.save_tree)
+        
     def on_search_node(self):
         value = self.search_entry.get()
         if value.isdigit():
@@ -255,7 +258,29 @@ class Sidebar(tk.Frame):
         btn.bind("<Enter>", lambda e: btn.config(bg="#e0e0e0"))
         btn.bind("<Leave>", lambda e: btn.config(bg="white"))
         btn.bind("<Button-1>", lambda e: command())
+        if text == "💾 Lưu cây":
+            btn.bind("<Button-1>", lambda e: self.save_tree())  # Chỉnh sửa ở đây
 
+    def save_tree(self):
+        if self.tree_root is None:
+            messagebox.showinfo("No tree to save.")
+            return
+        data = self._serialize_tree(self.tree_root)
+        filepath = filedialog.asksaveasfilename(defaultextension=".json",
+                                             filetypes=[("JSON files", "*.json")],
+                                             title="Chọn nơi lưu cây")
+        if filepath:
+            with open(filepath, "w") as f:json.dump(data, f)
+            messagebox.showinfo("Success", "Đã lưu cây vào file.")
+    
+    def _serialize_tree(self, node):
+        if node is None:
+            return None
+        return {
+            "val": node.val,
+            "left": self._serialize_tree(node.left),
+            "right": self._serialize_tree(node.right)
+        }
         
 # ==== MAIN ====
 if __name__ == "__main__":
@@ -278,8 +303,7 @@ if __name__ == "__main__":
     visualizer = BinaryTreeVisualizer(main_area)
     visualizer.bind_click_event()
     sidebar.visualizer = visualizer
-    # Chọn trang mặc định là "Binary Tree"
-    header.set_active("Binary Tree")
     visualizer.sidebar = sidebar
+    header.set_active("Binary Tree")
     root.mainloop()
 
