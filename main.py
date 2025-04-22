@@ -1,10 +1,9 @@
 import tkinter as tk
 import ttkbootstrap as ttk
 import tkinter.messagebox as messagebox
+from tkinter.filedialog import asksaveasfilename
 from PIL import Image, ImageTk
-from tkinter import filedialog
 import random
-import json
 
 # ==== Cây nhị phân đơn giản ====
 
@@ -21,9 +20,9 @@ class BinaryTreeVisualizer:
         self.level_height = 80
         self.highlighted_node = None
         self.nodes_positions = []
-        self.root = None  # Root tree
+        self.root = None
         self.sidebar = None
-        
+
     def set_root(self, root):
         self.root = root
 
@@ -58,11 +57,10 @@ class BinaryTreeVisualizer:
                 node.right = new_node
             elif node.left is None:
                 node.left = new_node
-        # Nếu cả 2 bên đều có rồi thì không thêm gì
         if self.sidebar:
             new_array = self.tree_to_array(self.root)
             self.sidebar.array = new_array
-            self.sidebar.array_display.config(text=str(new_array))
+            self.sidebar.update_array_display(new_array)
 
     def draw_tree(self, root):
         self.canvas.delete("all")
@@ -83,13 +81,16 @@ class BinaryTreeVisualizer:
                                 x + self.node_radius, y + self.node_radius, fill=color)
         self.canvas.create_text(x, y, text=str(node.val), font=("Arial", 12, "bold"))
         self.nodes_positions.append((x, y, node))
+
     def tree_to_array(self, root):
         result = []
         queue = [root]
         while queue:
             current = queue.pop(0)
             if current:
-                result.append(current.val)
+                left_val = current.left.val if current.left else 0
+                right_val = current.right.val if current.right else 0
+                result.extend([current.val, left_val, right_val])
                 queue.append(current.left)
                 queue.append(current.right)
         return result
@@ -103,7 +104,7 @@ class Header(tk.Frame):
         self.pack(fill='x')
 
         self.on_menu_click = on_menu_click
-        self.menu_buttons = {}  # Lưu các nút menu
+        self.menu_buttons = {}
 
         logo_image = Image.open("binarytree.png").resize((75, 75))
         self.logo_photo = ImageTk.PhotoImage(logo_image)
@@ -119,10 +120,6 @@ class Header(tk.Frame):
             btn = tk.Label(self, text=item, font=normal_font,
                            bg="#b0b0b0", fg="black", cursor="hand2")
             btn.pack(side="left", padx=30)
-            normal_font = ("Arial", 20, "bold")
-
-            underline_font = ("Arial", 20, "bold", "underline")
-            underline_thin_font = ("Arial", 20, "bold", "underline", "1")
             btn.bind("<Enter>", lambda e, b=btn: b.config(font=underline_font))
             btn.bind("<Leave>", lambda e, b=btn: b.config(font=normal_font))
             btn.bind("<Button-1>", lambda e, name=item: self.menu_clicked(name))
@@ -140,34 +137,42 @@ class Header(tk.Frame):
             else:
                 btn.config(fg="black", font=("Arial", 20, "bold"))
 
+
 # ==== SIDEBAR ====
+
 class Sidebar(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent, bg="grey", width=400)
         self.pack(side="left", fill="y")
         self.pack_propagate(False)
-        
         self.tree_root = None
         self.array = []
         self.visualizer = None
         self.highlighted_node = None
 
         array_label = tk.Label(self, text="Array:", font=("Arial", 20, "bold"), bg="grey", fg="black")
-        array_label.pack(anchor="w", padx=20, pady=(0, 1))
+        array_label.pack(anchor="w", padx=20, pady=(0, 5))
 
-        self.array_display = tk.Label(
-            self,
-            text="",
+        array_frame = tk.Frame(self, bg="grey")
+        array_frame.pack(padx=20, pady=10, fill="both", expand=False)
+
+        self.array_display = tk.Text(
+            array_frame,
+            wrap="none",
+            height=12,
+            font=("Arial", 14),
             bg="white",
-            font=("Arial", 16),
-            anchor="n",
-            justify="left",
-            height=20,
-            bd=10,
-            relief="flat"
+            relief="solid",
+            bd=1,
+            padx=10,
+            pady=10,
+            insertborderwidth=4
         )
-        
-        self.array_display.pack(padx=20, fill="x", pady=(0, 20))
+        self.array_display.pack(side="left", fill="both", expand=True)
+
+        scroll = tk.Scrollbar(array_frame, command=self.array_display.yview)
+        scroll.pack(side="right", fill="y")
+        self.array_display.config(yscrollcommand=scroll.set, state="disabled")
 
         search_title = tk.Label(self, text="Find:", font=("Arial", 18, "bold"), bg="grey", fg="black")
         search_title.pack(anchor="w", padx=20, pady=(10, 5))
@@ -187,10 +192,47 @@ class Sidebar(tk.Frame):
             command=self.on_search_node
         )
         search_btn.pack(side="left", padx=(5, 0))
+
         self.create_modern_button("Create random tree", self.on_random_tree)
         self.create_modern_button("Delete", self.on_clear_tree)
-        self.create_modern_button("Save tree", self.save_tree)
-        
+        self.create_modern_button("Save to file", self.save_tree_to_file)
+
+    def format_array_multiline(self, array):
+        lines = []
+        for i in range(0, len(array), 3):
+            group = array[i:i+3]
+            line = ", ".join(str(val) for val in group)
+            lines.append(line)
+        return "\n".join(lines)
+
+    def update_array_display(self, array):
+        self.array_display.config(state="normal")
+        self.array_display.delete("1.0", tk.END)
+        self.array_display.insert("1.0", self.format_array_multiline(array))
+        self.array_display.config(state="disabled")
+
+    def save_tree_to_file(self):
+        if not self.array:
+            messagebox.showwarning("Empty Tree", "There is no tree to save.")
+            return
+
+        file_path = asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("Text Files", "*.txt")],
+            title="Save Tree As"
+        )
+
+        if not file_path:
+            return  # người dùng bấm Cancel
+
+        content = self.format_array_multiline(self.array)
+        try:
+            with open(file_path, "w") as f:
+                f.write(content)
+            messagebox.showinfo("Success", f"Tree saved to:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save file:\n{e}")
+
     def on_search_node(self):
         value = self.search_entry.get()
         if value.isdigit():
@@ -217,17 +259,19 @@ class Sidebar(tk.Frame):
 
     def on_random_tree(self):
         self.array = random.sample(range(1, 100), 7)
-        self.array_display.config(text=str(self.array))
         self.tree_root = self.build_tree_from_list(self.array)
         if self.visualizer:
             self.visualizer.set_root(self.tree_root)
             self.visualizer.draw_tree(self.tree_root)
+            new_array = self.visualizer.tree_to_array(self.tree_root)
+            self.array = new_array
+            self.update_array_display(new_array)
 
     def on_clear_tree(self):
         self.tree_root = None
         self.array = []
         self.highlighted_node = None
-        self.array_display.config(text="")
+        self.update_array_display([])
         if self.visualizer:
             self.visualizer.canvas.delete("all")
 
@@ -258,44 +302,19 @@ class Sidebar(tk.Frame):
         btn.bind("<Enter>", lambda e: btn.config(bg="#e0e0e0"))
         btn.bind("<Leave>", lambda e: btn.config(bg="white"))
         btn.bind("<Button-1>", lambda e: command())
-        if text == "💾 Lưu cây":
-            btn.bind("<Button-1>", lambda e: self.save_tree())  # Chỉnh sửa ở đây
 
-    def save_tree(self):
-        if self.tree_root is None:
-            messagebox.showinfo("No tree to save.")
-            return
-        data = self._serialize_tree(self.tree_root)
-        filepath = filedialog.asksaveasfilename(defaultextension=".json",
-                                             filetypes=[("JSON files", "*.json")],
-                                             title="Chọn nơi lưu cây")
-        if filepath:
-            with open(filepath, "w") as f:json.dump(data, f)
-            messagebox.showinfo("Success", "Đã lưu cây vào file.")
-    
-    def _serialize_tree(self, node):
-        if node is None:
-            return None
-        return {
-            "val": node.val,
-            "left": self._serialize_tree(node.left),
-            "right": self._serialize_tree(node.right)
-        }
-        
+
 # ==== MAIN ====
+
 if __name__ == "__main__":
     def show_page(name):
         print(f"Chuyển đến trang: {name}")
-        header.set_active(name)  # Cập nhật màu menu
-        
-        # Tùy theo tên trang, bạn có thể thay đổi nội dung main_area
-        # Ví dụ: xóa canvas cũ, tạo cây mới, v.v.
+        header.set_active(name)
 
     root = tk.Tk()
     root.geometry("1200x700")
     root.title("TreeSim")
-    
-    # Truyền show_page cho Header
+
     header = Header(root, on_menu_click=show_page)
     sidebar = Sidebar(root)
     main_area = tk.Canvas(root, bg="lightgrey")
@@ -303,7 +322,6 @@ if __name__ == "__main__":
     visualizer = BinaryTreeVisualizer(main_area)
     visualizer.bind_click_event()
     sidebar.visualizer = visualizer
-    visualizer.sidebar = sidebar
     header.set_active("Binary Tree")
+    visualizer.sidebar = sidebar
     root.mainloop()
-
