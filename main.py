@@ -19,7 +19,7 @@ class BinaryTreeVisualizer:
         self.node_radius = 20
         self.level_height = 80
         self.highlighted_node = None
-        self.nodes_positions = []
+        self.nodes_positions = []  # Lưu các vị trí của các node
         self.root = None
         self.sidebar = None
 
@@ -34,19 +34,21 @@ class BinaryTreeVisualizer:
 
     def on_canvas_click(self, event):
         x_click, y_click = event.x, event.y
+        print(f"Click at: ({x_click}, {y_click})")  # In ra tọa độ click
         for x, y, node in self.nodes_positions:
             dx = x_click - x
             dy = y_click - y
             distance = (dx**2 + dy**2) ** 0.5
+            print(f"Node position: ({x}, {y}), Distance: {distance}")  # In ra vị trí node và khoảng cách
             if distance <= self.node_radius:
-                self.add_random_child(node)
-                self.draw_tree(self.root)
+                # Hiển thị cửa sổ chỉnh sửa node
+                self.show_edit_node_window(node)
                 break
 
     def add_random_child(self, node):
-        new_value = random.randint(1, 100)
+        new_value = random.randint(1, 100)  # Sinh giá trị ngẫu nhiên cho node mới
         new_node = TreeNode(new_value)
-        direction = random.choice(["left", "right"])
+        direction = random.choice(["left", "right"])  # Chọn ngẫu nhiên con trái hoặc con phải
         if direction == "left":
             if node.left is None:
                 node.left = new_node
@@ -62,25 +64,112 @@ class BinaryTreeVisualizer:
             self.sidebar.array = new_array
             self.sidebar.update_array_display(new_array)
 
+    def show_edit_node_window(self, node):
+        # Tạo cửa sổ con
+        edit_window = tk.Toplevel()
+        edit_window.title("Edit Node")
+        edit_window.geometry("300x200")  # Kích thước cửa sổ
+
+        # Lấy kích thước màn hình
+        screen_width = edit_window.winfo_screenwidth()
+        screen_height = edit_window.winfo_screenheight()
+
+        # Tính toán vị trí để đặt cửa sổ ở giữa màn hình
+        window_width = 300
+        window_height = 200
+        x_position = (screen_width // 2) - (window_width // 2)
+        y_position = (screen_height // 2) - (window_height // 2)
+
+        # Đặt vị trí cửa sổ
+        edit_window.geometry(f"{window_width}x{window_height}+{x_position}+{y_position}")
+        edit_window.transient(self.canvas.winfo_toplevel())  # Đặt cửa sổ con trên cửa sổ chính
+
+        # Nhãn hiển thị giá trị hiện tại của node
+        tk.Label(edit_window, text=f"Current Value: {node.val}", font=("Arial", 14)).pack(pady=10)
+
+        # Entry để nhập giá trị mới
+        tk.Label(edit_window, text="New Value:", font=("Arial", 12)).pack(pady=5)
+        new_value_entry = tk.Entry(edit_window, font=("Arial", 12))
+        new_value_entry.pack(pady=5)
+
+        # Nút để lưu giá trị mới
+        def save_new_value(new_value_entry):
+            new_value = new_value_entry.get()
+            if new_value.isdigit():
+                node.val = int(new_value)  # Cập nhật giá trị node
+                self.draw_tree(self.root)  # Vẽ lại cây
+            if self.sidebar:
+                new_array = self.tree_to_array(self.root)  # Cập nhật mảng từ cây
+                self.sidebar.array = new_array
+                self.sidebar.update_array_display(new_array)  # Hiển thị mảng mới
+                edit_window.destroy()  # Đóng cửa sổ
+            else:
+                messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
+
+        tk.Button(edit_window, text="Save", command=lambda: save_new_value(new_value_entry), font=("Arial", 12)).pack(pady=10)
+
+        # Nút để xóa node
+        def delete_node():
+            # Lưu giá trị của node trước khi xóa
+            nonlocal node
+            deleted_value = node.val
+            self.root = self._delete_node_recursive(self.root, node)  # Xóa node khỏi cây
+            self.draw_tree(self.root)  # Vẽ lại cây
+            if self.sidebar:
+                # Cập nhật mảng từ cây
+                new_array = self.tree_to_array(self.root)
+
+                # Thay thế giá trị của node bị xóa bằng 0
+                for i in range(len(self.sidebar.array)):
+                    if self.sidebar.array[i] == deleted_value:
+                        self.sidebar.array[i] = 0
+
+                # Hiển thị mảng mới
+                self.sidebar.update_array_display(self.sidebar.array)
+            edit_window.destroy()  # Đóng cửa sổ
+
+        tk.Button(edit_window, text="Delete Node", command=delete_node, font=("Arial", 12), fg="red").pack(pady=10)
+
+    def delete_node(self, node, edit_window):
+        self._delete_node_recursive(self.root, node)
+        self.draw_tree(self.root)  # Vẽ lại cây
+        if self.sidebar:
+            new_array = self.tree_to_array(self.root)  # Cập nhật mảng từ cây
+            self.sidebar.array = new_array
+            self.sidebar.update_array_display(new_array)  # Hiển thị mảng mới
+        edit_window.destroy()  # Đóng cửa sổ
+
+    def _delete_node_recursive(self, current, target):
+        if current is None:
+            return None
+        if current == target:
+            return None
+        current.left = self._delete_node_recursive(current.left, target)
+        current.right = self._delete_node_recursive(current.right, target)
+        return current
+
     def draw_tree(self, root):
         self.canvas.delete("all")
-        self.nodes_positions = []
+        self.nodes_positions = []  # Làm mới danh sách vị trí các node
         if root:
             self._draw_subtree(root, 500, 40, 250)
 
     def _draw_subtree(self, node, x, y, x_offset):
+        # Vẽ nhánh trái
         if node.left:
             self.canvas.create_line(x, y, x - x_offset, y + self.level_height)
             self._draw_subtree(node.left, x - x_offset, y + self.level_height, x_offset // 2)
+        # Vẽ nhánh phải
         if node.right:
             self.canvas.create_line(x, y, x + x_offset, y + self.level_height)
             self._draw_subtree(node.right, x + x_offset, y + self.level_height, x_offset // 2)
 
+        # Màu sắc của node
         color = "grey" if node == self.highlighted_node else "white"
         self.canvas.create_oval(x - self.node_radius, y - self.node_radius,
                                 x + self.node_radius, y + self.node_radius, fill=color)
         self.canvas.create_text(x, y, text=str(node.val), font=("Arial", 12, "bold"))
-        self.nodes_positions.append((x, y, node))
+        self.nodes_positions.append((x, y, node))  # Cập nhật vị trí node
 
     def tree_to_array(self, root):
         result = []
@@ -95,9 +184,7 @@ class BinaryTreeVisualizer:
                 queue.append(current.right)
         return result
 
-
 # ==== HEADER ====
-
 class Header(tk.Frame):
     def __init__(self, parent, on_menu_click):
         super().__init__(parent, bg="#b0b0b0")
