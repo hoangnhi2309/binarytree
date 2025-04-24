@@ -40,9 +40,183 @@ class BinaryTreeVisualizer:
             dy = y_click - y
             distance = (dx**2 + dy**2) ** 0.5
             if distance <= self.node_radius:
-                self.add_random_child(node)
-                self.draw_tree(self.root)
-                break
+                # Hiển thị menu khi nhấn vào node
+                self.show_node_menu(event, node)
+                return
+
+    
+    def show_node_menu(self, event, node):
+    # Tạo menu popup
+        menu = tk.Menu(self.canvas, tearoff=0)
+        menu.add_command(label="Edit Node", command=lambda: self.edit_node(node))
+        menu.add_command(label="Delete Node", command=lambda: self.delete_node(node))
+        # Tạo menu con cho "Add Node"
+        add_menu = tk.Menu(menu, tearoff=0)
+        add_menu.add_command(label="Left side", command=lambda: self.add_child_node(node, "left"))
+        add_menu.add_command(label="Right side", command=lambda: self.add_child_node(node, "right"))
+        menu.add_cascade(label="Add Node", menu=add_menu)
+        menu.add_command(label="Switch Node", command=lambda: self.switch_node(node))
+        menu.post(event.x_root, event.y_root)  # Hiển thị menu tại vị trí nhấn chuột
+
+    def edit_node(self, node):
+    # Hiển thị popup để chỉnh sửa giá trị của node
+        popup = tk.Toplevel(self.canvas)
+        popup.title("Edit Node")
+        popup.geometry("300x150")
+        popup.transient(self.canvas.winfo_toplevel())  # Hiển thị popup ở giữa cửa sổ chính
+
+    # Tính toán vị trí trung tâm
+        root_x = self.canvas.winfo_toplevel().winfo_rootx()
+        root_y = self.canvas.winfo_toplevel().winfo_rooty()
+        root_width = self.canvas.winfo_toplevel().winfo_width()
+        root_height = self.canvas.winfo_toplevel().winfo_height()
+
+        popup_width = 300
+        popup_height = 150
+        center_x = root_x + (root_width // 2) - (popup_width // 2)
+        center_y = root_y + (root_height // 2) - (popup_height // 2)
+
+        popup.geometry(f"{popup_width}x{popup_height}+{center_x}+{center_y}")
+
+        tk.Label(popup, text="New Value:", font=("Arial", 12)).pack(pady=10)
+        value_entry = tk.Entry(popup, font=("Arial", 12))
+        value_entry.pack(pady=10)
+        tk.Button(popup, text="Save",command=lambda: self.save_value(node, value_entry, popup), font=("Arial", 12)).pack(pady=10)
+
+    def save_value(self, node, value_entry, popup):
+        try:
+            new_value = int(value_entry.get())  # Lấy giá trị mới từ ô nhập
+            node.val = new_value  # Cập nhật giá trị của node
+            self.draw_tree(self.root)  # Vẽ lại cây
+            # Cập nhật mảng trong sidebar
+            if self.sidebar:
+                new_array = self.tree_to_array(self.root)
+                self.sidebar.array = new_array
+                self.sidebar.update_array_display(new_array)
+                popup.destroy()  # Đóng popup sau khi lưu
+        except ValueError:
+            messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
+    
+    def delete_node(self, node):
+    # Xóa node khỏi cây
+        def remove_node(parent, target):
+            if parent.left == target:
+                parent.left = None
+            elif parent.right == target:
+                parent.right = None
+
+        def find_and_remove(parent, current, target):
+            if current is None:
+                return
+            if current == target:
+                remove_node(parent, target)
+                return
+            find_and_remove(current, current.left, target)
+            find_and_remove(current, current.right, target)
+
+        if self.root == node:
+            self.root = None  # Xóa root nếu node là root
+        else:
+            find_and_remove(None, self.root, node)
+
+        self.draw_tree(self.root)  # Vẽ lại cây để cập nhật giao diện
+        # Cập nhật mảng trong sidebar
+        if self.sidebar:
+            new_array = self.tree_to_array(self.root)
+        # Thay thế các giá trị None bằng 0
+            new_array = [0 if val is None else val for val in new_array]
+            self.sidebar.array = new_array
+            self.sidebar.update_array_display(new_array)
+
+    def add_child_node(self, node, direction):
+    # Tạo node mới với giá trị ngẫu nhiên
+        new_value = random.randint(1, 100)
+        new_node = TreeNode(new_value)
+
+        if direction == "left":
+            if node.left is None:
+                node.left = new_node
+                return
+            else:
+                messagebox.showwarning("Node Exists", "Node bên trái đã tồn tại.")
+        elif direction == "right":
+            if node.right is None:
+                node.right = new_node
+                return
+            else:
+                messagebox.showwarning("Node Exists", "Node bên phải đã tồn tại.")
+        # Vẽ lại cây và cập nhật sidebar
+        self.draw_tree(self.root)
+        if self.sidebar:
+            new_array = self.tree_to_array(self.root)
+            self.sidebar.array = new_array
+            self.sidebar.update_array_display(new_array)
+
+    def switch_node(self, node):
+    # Hiển thị popup để chọn giá trị của node cần hoán đổi
+        popup = tk.Toplevel(self.canvas)
+        popup.title("Switch Node")
+        popup.geometry("300x200")
+        popup.transient(self.canvas.winfo_toplevel())  # Hiển thị popup ở giữa cửa sổ chính
+
+    # Tính toán vị trí trung tâm
+        root_x = self.canvas.winfo_toplevel().winfo_rootx()
+        root_y = self.canvas.winfo_toplevel().winfo_rooty()
+        root_width = self.canvas.winfo_toplevel().winfo_width()
+        root_height = self.canvas.winfo_toplevel().winfo_height()
+
+        popup_width = 300
+        popup_height = 200
+        center_x = root_x + (root_width // 2) - (popup_width // 2)
+        center_y = root_y + (root_height // 2) - (popup_height // 2)
+
+        popup.geometry(f"{popup_width}x{popup_height}+{center_x}+{center_y}")
+        tk.Label(popup, text="Enter value of the node to switch with:", font=("Arial", 12)).pack(pady=10)
+        value_entry = tk.Entry(popup, font=("Arial", 12))
+        value_entry.pack(pady=10)
+
+        tk.Button(popup, text="Switch", command=lambda: self.perform_switch(node, value_entry), font=("Arial", 12)).pack(pady=10)
+
+    def perform_switch(self, node, value_entry):
+        try:
+            target_value = int(value_entry.get())  # Lấy giá trị của node cần hoán đổi
+            target_node = self.find_node_by_value(self.root, target_value)
+            if target_node is None:
+                messagebox.showwarning("Node Not Found", f"Node with value {target_value} not found.")
+                return
+
+            # Hoán đổi giá trị giữa hai node
+            node.val, target_node.val = target_node.val, node.val
+
+            # Vẽ lại cây và cập nhật sidebar
+            self.draw_tree(self.root)
+            if self.sidebar:
+                new_array = self.tree_to_array(self.root)
+                print(f"Updated array after switch: {new_array}")  # Thêm thông báo kiểm tra
+                self.sidebar.array = new_array
+                self.sidebar.update_array_display(new_array)  # Cập nhật bảng array trong sidebar
+                value_entry.master.destroy()  # Đóng popup sau khi hoán đổi
+        except ValueError:
+            messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An unexpected error occurred: {e}")
+
+    def find_node_by_value(self, root, value):
+        if root is None:
+            return None
+        if root.val == value:
+            return root
+        left_result = self.find_node_by_value(root.left, value)
+        if left_result:
+            return left_result
+        return self.find_node_by_value(root.right, value)
+
+    # Vẽ lại cây và cập nhật sidebar
+    def draw_tree(self, root):
+        self.canvas.delete("all")
+        self.nodes_positions = []
+        if root:
+            self._draw_subtree(root, 500, 40, 250)
 
     def add_random_child(self, node):
         new_value = random.randint(1, 100)
@@ -62,6 +236,19 @@ class BinaryTreeVisualizer:
             new_array = self.tree_to_array(self.root)
             self.sidebar.array = new_array
             self.sidebar.update_array_display(new_array)
+
+    def tree_to_array(self, root):
+        result = []
+        queue = [root]
+        while queue:
+            current = queue.pop(0)
+        if current:
+            result.append(current.val)
+            queue.append(current.left)
+            queue.append(current.right)
+        else:
+            result.append(0)  # Thêm giá trị 0 nếu node không tồn tại
+        return result
 
     def draw_tree(self, root):
         self.canvas.delete("all")
