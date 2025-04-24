@@ -136,21 +136,36 @@ class BinaryTreeVisualizer:
         if direction == "left":
             if node.left is None:
                 node.left = new_node
-                return
             else:
                 messagebox.showwarning("Node Exists", "Node bên trái đã tồn tại.")
+                return
         elif direction == "right":
             if node.right is None:
                 node.right = new_node
-                return
             else:
                 messagebox.showwarning("Node Exists", "Node bên phải đã tồn tại.")
+                return
         # Vẽ lại cây và cập nhật sidebar
         self.draw_tree(self.root)
         if self.sidebar:
             new_array = self.tree_to_array(self.root)
             self.sidebar.array = new_array
             self.sidebar.update_array_display(new_array)
+            return
+
+    def tree_to_array(self, root):
+            result = []
+            queue = [root]
+            while queue:
+                current = queue.pop(0)
+                if current:
+                    result.append(current.val)
+                    queue.append(current.left)
+                    queue.append(current.right)
+                else:
+                    result.append(0)  # Thêm giá trị 0 nếu node không tồn tại
+            print(f"Updated array: {result}")  # Thêm thông báo kiểm tra
+            return result
 
     def switch_node(self, node):
     # Hiển thị popup để chọn giá trị của node cần hoán đổi
