@@ -33,21 +33,33 @@ class BinaryTreeVisualizer:
 
     def bind_click_event(self):
         self.canvas.bind("<Button-1>", self.on_canvas_click)
-
+        self.canvas.bind("<Button-3>", self.on_canvas_right_click)
+        self.canvas.bind("<Button-2>", self.on_canvas_middle_click)
     def on_canvas_click(self, event):
-        x_click, y_click = event.x, event.y
-        for x, y, node in self.nodes_positions:
-            dx = x_click - x
-            dy = y_click - y
-            distance = (dx**2 + dy**2) ** 0.5
-            if distance <= self.node_radius:
-                # Hiển thị menu khi nhấn vào node
+        # Xác định vị trí nhấn chuột
+        x, y = event.x, event.y
+        for pos in self.nodes_positions:
+            node_x, node_y, node = pos
+            if (node_x - self.node_radius <= x <= node_x + self.node_radius and
+                node_y - self.node_radius <= y <= node_y + self.node_radius):
+                # Nếu nhấn vào node, hiển thị menu
                 self.show_node_menu(event, node)
-                return
+                break
 
-    
+    def on_canvas_right_click(self, event):
+
+        pass
+
+    def on_canvas_middle_click(self, event):
+
+        pass
+
     def show_node_menu(self, event, node):
-    # Tạo menu popup
+        # Đổi màu node được click
+        self.highlighted_node = node
+        self.draw_tree(self.root)  # Vẽ lại cây để cập nhật màu sắc
+
+        # Tạo menu popup
         menu = tk.Menu(self.canvas, tearoff=0)
         menu.add_command(label="Edit Node", command=lambda: self.edit_node(node))
         menu.add_command(label="Delete Node", command=lambda: self.delete_node(node))
@@ -58,6 +70,7 @@ class BinaryTreeVisualizer:
         menu.add_cascade(label="Add Node", menu=add_menu)
         menu.add_command(label="Switch Node", command=lambda: self.switch_node(node))
         menu.post(event.x_root, event.y_root)  # Hiển thị menu tại vị trí nhấn chuột
+            
 
     def edit_node(self, node):
     # Hiển thị popup để chỉnh sửa giá trị của node
@@ -462,19 +475,25 @@ class Sidebar(tk.Frame):
         return self._find_node(root.right, value)
 
     def on_random_tree(self):
-    # Tạo popup để nhập min và max
+    # Tạo popup để nhập min, max và độ sâu
         self.popup = tk.Toplevel(self)  # Lưu popup vào self.popup
         self.popup.title("Create Random Tree")
-        self.popup.geometry("300x200")
+        self.popup.geometry("300x250")
         self.popup.transient(self.winfo_toplevel())  # Hiển thị popup ở giữa cửa sổ chính
 
         tk.Label(self.popup, text="Min Value:", font=("Arial", 12)).pack(pady=5)
         self.min_entry = tk.Entry(self.popup, font=("Arial", 12))
+        self.min_entry.insert(0, "1")  # Giá trị mặc định là 1
         self.min_entry.pack(pady=5)
 
         tk.Label(self.popup, text="Max Value:", font=("Arial", 12)).pack(pady=5)
         self.max_entry = tk.Entry(self.popup, font=("Arial", 12))
+        self.max_entry.insert(0, "99")  # Giá trị mặc định là 99
         self.max_entry.pack(pady=5)
+
+        tk.Label(self.popup, text="Tree Depth:", font=("Arial", 12)).pack(pady=5)
+        self.depth_entry = tk.Entry(self.popup, font=("Arial", 12))
+        self.depth_entry.pack(pady=5)
 
         tk.Button(self.popup, text="Create", command=self.create_tree, font=("Arial", 12)).pack(pady=10)
 
@@ -482,27 +501,36 @@ class Sidebar(tk.Frame):
         try:
             min_value = int(self.min_entry.get())
             max_value = int(self.max_entry.get())
+            depth = int(self.depth_entry.get())
             if min_value >= max_value:
                 messagebox.showwarning("Invalid Input", "Min value must be less than Max value.")
                 return
+            if depth <= 0:
+                messagebox.showwarning("Invalid Input", "Depth must be a positive integer.")
+                return
 
-            # Tạo cây ngẫu nhiên với giá trị trong khoảng [min_value, max_value]
-            self.array = random.sample(range(min_value, max_value + 1), 7)
+            # Tạo cây ngẫu nhiên với giá trị trong khoảng [min_value, max_value] và độ sâu
+            self.array = self.generate_random_tree_array(min_value, max_value, depth)
             self.tree_root = self.build_tree_from_list(self.array)
             if self.visualizer:
-                    self.visualizer.set_root(self.tree_root)
-            self.visualizer.draw_tree(self.tree_root)
+                self.visualizer.set_root(self.tree_root)
+                self.visualizer.draw_tree(self.tree_root)
             new_array = self.visualizer.tree_to_array(self.tree_root)
             self.array = new_array
             self.update_array_display(new_array)
 
-
             self.popup.destroy()  # Đóng popup sau khi tạo cây
         except ValueError:
-            messagebox.showwarning("Invalid Input", "Please enter valid integers for Min and Max.")
+            messagebox.showwarning("Invalid Input", "Please enter valid integers for Min, Max, and Depth.")
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {e}")
-        
+            
+    def generate_random_tree_array(self, min_value, max_value, depth):
+        # Tạo mảng đại diện cho cây nhị phân với độ sâu cho trước
+        import math
+        max_nodes = 2**depth - 1  # Số lượng node tối đa cho độ sâu
+        values = random.sample(range(min_value, max_value + 1), max_nodes)
+        return values
 
     def on_clear_tree(self):
         self.tree_root = None
