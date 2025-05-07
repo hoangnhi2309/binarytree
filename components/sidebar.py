@@ -7,6 +7,9 @@ from PIL import Image, ImageTk
 import os
 from visualizer.binary_tree_visualizer import BinaryTreeVisualizer
 from controller import Controller
+import ast
+from tkinter.filedialog import askopenfilename
+
 
 class TreeNode:
     def __init__(self, val):
@@ -73,6 +76,7 @@ class Sidebar(tk.Frame):
         self.create_modern_button("Delete tree", self.on_clear_tree)
         self.create_modern_button("Traversal", self.show_traversal_options)
         self.create_modern_button("Save to file", self.save_tree_to_file)
+        self.create_modern_button("Load from file", self.load_tree_from_file)
 
     def format_array_multiline(self, array):
         lines = []
@@ -102,13 +106,62 @@ class Sidebar(tk.Frame):
         if not file_path:
             return  # người dùng bấm Cancel
 
-        content = self.format_array_multiline(self.array)
+        content = repr(self.array)
         try:
             with open(file_path, "w") as f:
                 f.write(content)
             messagebox.showinfo("Success", f"Tree saved to:\n{file_path}")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save file:\n{e}")
+    
+    def load_tree_from_file(self):
+        file_path = askopenfilename(
+            defaultextension=".txt",
+            filetypes=[("Text Files", "*.txt")],
+            title="Load Tree From"
+        )
+        if not file_path:
+            return
+        try:
+            with open(file_path, "r") as f:
+                content = f.read()
+                loaded_array = ast.literal_eval(content)
+
+            if not isinstance(loaded_array, list):
+                raise ValueError("Loaded content is not a valid list.")
+
+            self.array = loaded_array
+
+            # Xây lại cây từ mảng, coi số 0 là node rỗng
+            self.tree_root = self.build_tree_from_list(self.array)
+
+            if self.visualizer and self.tree_root:
+                self.visualizer.set_root(self.tree_root)
+                self.visualizer.draw_tree(self.tree_root)
+                new_array = self.visualizer.tree_to_array(self.tree_root)
+                self.array = new_array
+                self.update_array_display(self.array)
+            elif not self.tree_root:
+                messagebox.showwarning("Warning", "Loaded file does not represent a valid tree structure.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load tree:\n{e}")
+    def build_tree_from_list(values):
+        if not values:
+            return None
+
+        nodes = [TreeNode(val) if val != 0 else None for val in values]
+        for i in range(len(values)):
+            if nodes[i] is not None:
+                left_index = 2 * i + 1
+                right_index = 2 * i + 2
+                if left_index < len(values):
+                    nodes[i].left = nodes[left_index]
+                if right_index < len(values):
+                    nodes[i].right = nodes[right_index]
+        return nodes[0]
+
+
+
 
     def on_search_node(self):
         value = self.search_entry.get()
@@ -289,32 +342,80 @@ class Sidebar(tk.Frame):
         btn.bind("<Leave>", lambda e: btn.config(bg="white"))
         btn.bind("<Button-1>", lambda e: command())
     
+    def traverse_tree(self, root, mode):
+        # Hàm duyệt cây theo mode (preorder, inorder, postorder)
+        if root is None:
+            return []
+
+        if mode == "preorder":
+            return [root.val] + self.traverse_tree(root.left, mode) + self.traverse_tree(root.right, mode)
+        elif mode == "inorder":
+            return self.traverse_tree(root.left, mode) + [root.val] + self.traverse_tree(root.right, mode)
+        elif mode == "postorder":
+            return self.traverse_tree(root.left, mode) + self.traverse_tree(root.right, mode) + [root.val]
+        else:
+            return []
     def show_traversal_options(self):
-        visualizer = self.controller.visualizer
-        if not self.visualizer or not self.visualizer.tree_root:
-            messagebox.showwarning("Chưa có cây", "Vui lòng tạo cây trước.")
+        if not self.tree_root:
+            messagebox.showwarning("Warning", "Tree is empty. Please create or load a tree.")
             return
 
+        def on_select(mode):
+            result = self.traverse_tree(self.tree_root, mode)
+            result_str = " -> ".join(map(str, result))
+            # Thêm tên loại duyệt vào thông báo
+            messagebox.showinfo(f"{mode.capitalize()} Traversal", f"{mode.capitalize()} Traversal: {result_str}")
+
+        # Tạo cửa sổ popup
         popup = tk.Toplevel(self)
-        popup.title("Chọn cách duyệt cây")
-        popup.geometry("300x200")
-        popup.transient(self.winfo_toplevel())
+        popup.title("Choose Traversal Method")
+        popup.geometry("300x250")  # Tăng kích thước cửa sổ nếu cần
+        popup.config(bg="#f7f7f7")  # Màu nền sáng cho cửa sổ
 
-        tk.Button(popup, text="Duyệt tiền thứ tự (Pre-order)", font=("Arial", 12),
-                  command=lambda: self.execute_traversal("preorder", popup)).pack(pady=5, fill="x", padx=20)
+        # Tiêu đề cửa sổ
+        tk.Label(popup, text="Select Traversal Type:", font=("Arial", 14, "bold"), bg="#f7f7f7").pack(pady=20)
 
-        tk.Button(popup, text="Duyệt trung thứ tự (In-order)", font=("Arial", 12),
-                  command=lambda: self.execute_traversal("inorder", popup)).pack(pady=5, fill="x", padx=20)
+        # Định dạng nút bấm
+        button_style = {
+            "font": ("Arial", 12),
+            "bg": "#4CAF50",  # Màu nền nút
+            "fg": "black",  # Màu chữ
+            "relief": "raised",  # Đường viền nổi cho nút
+            "bd": 0,  # Độ dày đường viền
+            "width": 20,
+            "height": 2,
+            "activebackground": "#45a049",  # Màu nền khi hover
+            "activeforeground": "white",  # Màu chữ khi hover
+            "highlightbackground": "black",  # Viền đen khi có focus
+            "highlightthickness": 2  # Độ dày viền khi có focus
+        }
 
-        tk.Button(popup, text="Duyệt hậu thứ tự (Post-order)", font=("Arial", 12),
-                  command=lambda: self.execute_traversal("postorder", popup)).pack(pady=5, fill="x", padx=20)
-    def execute_traversal(self, mode, popup):
-        visualizer = self.controller.visualizer  # Lấy lại visualizer mới nhất
-        if visualizer and visualizer.tree_root:
-            result = visualizer.traverse_tree(visualizer.tree_root, mode)
-            result_str = " → ".join(map(str, result))
-            self.controller.show_result("Kết quả duyệt " + mode + ": " + result_str)
-            popup.destroy()
-        else:
-            messagebox.showinfo("Thông báo", "Vui lòng tạo cây trước khi duyệt.")
-            # popup.destroy()  # có thể giữ lại để user đọc message
+        # Hàm để thay đổi màu nền khi di chuột qua
+        def on_enter(e, button):
+            button.config(bg="#45a049")  # Màu nền khi di chuột qua
+
+        def on_leave(e, button):
+            button.config(bg="#4CAF50")  # Màu nền khi chuột rời đi
+
+        # Tạo các nút lựa chọn duyệt cây
+        preorder_button = tk.Button(popup, text="Preorder", command=lambda: [on_select("preorder"), popup.destroy()], **button_style)
+        preorder_button.pack(pady=10)
+        preorder_button.bind("<Enter>", lambda e: on_enter(e, preorder_button))  # Khi di chuột qua nút
+        preorder_button.bind("<Leave>", lambda e: on_leave(e, preorder_button))  # Khi chuột rời khỏi nút
+
+        inorder_button = tk.Button(popup, text="Inorder", command=lambda: [on_select("inorder"), popup.destroy()], **button_style)
+        inorder_button.pack(pady=10)
+        inorder_button.bind("<Enter>", lambda e: on_enter(e, inorder_button))  # Khi di chuột qua nút
+        inorder_button.bind("<Leave>", lambda e: on_leave(e, inorder_button))  # Khi chuột rời khỏi nút
+
+        postorder_button = tk.Button(popup, text="Postorder", command=lambda: [on_select("postorder"), popup.destroy()], **button_style)
+        postorder_button.pack(pady=10)
+        postorder_button.bind("<Enter>", lambda e: on_enter(e, postorder_button))  # Khi di chuột qua nút
+        postorder_button.bind("<Leave>", lambda e: on_leave(e, postorder_button))  # Khi chuột rời khỏi nút
+
+        # Tạo nút đóng (Close)
+        close_button = tk.Button(popup, text="Close", command=lambda: popup.destroy(), font=("Arial", 12), bg="#f44336", fg="white", relief="raised", bd=2, width=20, height=2)
+        close_button.pack(pady=10)
+
+        # Đảm bảo cửa sổ popup là luôn trên
+        popup.grab_set()

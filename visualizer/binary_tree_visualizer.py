@@ -7,7 +7,7 @@ import tkinter.messagebox as messagebox
 from tkinter.filedialog import asksaveasfilename
 from PIL import Image, ImageTk
 import os
-from controller import Controller
+
 
 # ==== Cây nhị phân đơn giản ====
 
@@ -46,7 +46,9 @@ class BinaryTreeVisualizer:
 
     def get_root(self):
         return self.root
-
+    def clear_canvas(self):
+        self.canvas.delete("all")
+        self.node_positions.clear()
     def bind_click_event(self):
         # Gắn sự kiện chuột trái, phải, giữa cho canvas
         self.canvas.bind("<Button-1>", self.on_canvas_click)       # Click trái: mở menu node
@@ -231,16 +233,19 @@ class BinaryTreeVisualizer:
     def draw_tree(self, root):
 # Vẽ lại toàn bộ cây
         self.canvas.delete("all")
-        self.nodes_positions = []
         if root:
             self._draw_subtree(root, 500, 40, 250)
 
     def _draw_subtree(self, node, x, y, x_offset):
-# Đệ quy vẽ từng node và cạnh nối
-        if node.left:
+        if node is None or node.val == 0:
+            return
+
+        # Chỉ vẽ nhánh và node nếu node con có giá trị khác 0
+        if node.left and node.left.val != 0:
             self.canvas.create_line(x, y, x - x_offset, y + self.level_height)
             self._draw_subtree(node.left, x - x_offset, y + self.level_height, x_offset // 2)
-        if node.right:
+
+        if node.right and node.right.val != 0:
             self.canvas.create_line(x, y, x + x_offset, y + self.level_height)
             self._draw_subtree(node.right, x + x_offset, y + self.level_height, x_offset // 2)
 
@@ -250,8 +255,9 @@ class BinaryTreeVisualizer:
         self.canvas.create_text(x, y, text=str(node.val), font=("Arial", 12, "bold"))
         self.nodes_positions.append((x, y, node))
 
+
     def tree_to_array(self, root):
-# Chuyển cây sang mảng bằng duyệt BFS, gộp giá trị cha và 2 con
+        # Chuyển cây sang mảng bằng duyệt BFS, bỏ qua các node có giá trị 0
         result = []
         queue = [root]
         while queue:
@@ -259,39 +265,27 @@ class BinaryTreeVisualizer:
             if current:
                 left_val = current.left.val if current.left else 0
                 right_val = current.right.val if current.right else 0
-                result.extend([current.val, left_val, right_val])
+                # Nếu giá trị của node là 0, thì không đưa nó vào mảng
+                if current.val != 0:
+                    result.extend([current.val, left_val, right_val])
                 queue.append(current.left)
                 queue.append(current.right)
         return result
-    def traverse_tree(self, node, mode):
-        result = []
+    def _draw_node(self, node, x, y, dx, level):
+        if node is None:
+            return
 
-        def preorder(n):
-            if not n: return
-            result.append(n.value)
-            preorder(n.left)
-            preorder(n.right)
+        self._draw_circle(x, y, str(node.val))
 
-        def inorder(n):
-            if not n: return
-            inorder(n.left)
-            result.append(n.value)
-            inorder(n.right)
+        if node.left is not None:
+            self._draw_line(x, y, x - dx, y + self.level_height)
+            self._draw_node(node.left, x - dx, y + self.level_height, dx / 2, level + 1)
+        if node.right is not None:
+            self._draw_line(x, y, x + dx, y + self.level_height)
+            self._draw_node(node.right, x + dx, y + self.level_height, dx / 2, level + 1)
 
-        def postorder(n):
-            if not n: return
-            postorder(n.left)
-            postorder(n.right)
-            result.append(n.value)
 
-        if mode == "preorder":
-            preorder(node)
-        elif mode == "inorder":
-            inorder(node)
-        elif mode == "postorder":
-            postorder(node)
 
-        return result
 
 
     
