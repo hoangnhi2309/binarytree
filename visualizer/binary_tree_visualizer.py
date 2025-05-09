@@ -1,12 +1,10 @@
 import tkinter as tk
 import tkinter.ttk as ttk
 import random
-import threading
-import time
 import tkinter.messagebox as messagebox
 from tkinter.filedialog import asksaveasfilename
 from PIL import Image, ImageTk
-import os
+
 
 
 # ==== Cây nhị phân đơn giản ====
@@ -16,8 +14,6 @@ class TreeNode:
         self.val = value
         self.left = None
         self.right = None
-    def is_leaf(self):
-        return self.left is None and self.right is None
 class BinaryTreeVisualizer:
     def __init__(self, canvas):
         self.tree_root = None
@@ -38,7 +34,6 @@ class BinaryTreeVisualizer:
         
     def set_controller(self, controller):
         self.controller = controller
-
 #Thiết lập (cập nhật) node gốc (root) của cây nhị phân.
 #Trả về node gốc hiện tại của cây nhị phân để phục vụ thao tác khác.
     def set_root(self, root):
@@ -46,10 +41,6 @@ class BinaryTreeVisualizer:
 
     def get_root(self):
         return self.root
-    
-    def clear_canvas(self):
-        self.canvas.delete("all")
-        self.node_positions.clear()
 
     def bind_click_event(self):
         # Gắn sự kiện chuột trái, phải, giữa cho canvas
@@ -90,6 +81,43 @@ class BinaryTreeVisualizer:
         menu.add_command(label="Switch Node", command=lambda: self.switch_node(node))
         menu.post(event.x_root, event.y_root)  # Hiển thị menu tại vị trí nhấn chuột
 
+    def draw_tree(self, root):
+        self.canvas.delete("all")
+        self.nodes_positions = []
+        if root:
+            self._draw_subtree(root, 500, 40, 250)
+    
+    def _draw_subtree(self, node, x, y, x_offset):
+        if node.left:
+            self.canvas.create_line(x, y, x - x_offset, y + self.level_height)
+            self._draw_subtree(node.left, x - x_offset, y + self.level_height, x_offset // 2)
+        if node.right:
+            self.canvas.create_line(x, y, x + x_offset, y + self.level_height)
+            self._draw_subtree(node.right, x + x_offset, y + self.level_height, x_offset // 2)
+
+        color = "grey" if node == self.highlighted_node else "white"
+        self.canvas.create_oval(x - self.node_radius, y - self.node_radius,
+                                x + self.node_radius, y + self.node_radius, fill=color)
+        self.canvas.create_text(x, y, text=str(node.val), font=("Arial", 12, "bold"))
+        self.nodes_positions.append((x, y, node))
+    
+    def tree_to_array(self, root):
+        # Duyệt cây theo BFS để chuyển đổi thành mảng
+        if not root:
+            return []
+        result = []
+        queue = [root]
+        while queue:
+            current = queue.pop(0)
+            if current:
+                result.append(current.val)
+                queue.append(current.left)
+                queue.append(current.right)
+            else:
+                result.append(0)  # Node rỗng được biểu diễn bằng 0
+        return result
+    
+    
     def edit_node(self, node):
 # Hiển thị popup chỉnh sửa giá trị của node
         popup = tk.Toplevel(self.canvas)
@@ -122,9 +150,10 @@ class BinaryTreeVisualizer:
             self.draw_tree(self.root)
             if self.sidebar:
                 new_array = self.tree_to_array(self.root)
+                print(f"New Array: {new_array}")  # Kiểm tra mảng sau khi thay đổi
                 self.sidebar.array = new_array
                 self.sidebar.update_array_display(new_array)
-                popup.destroy()
+            popup.destroy()
         except ValueError:
             messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
 
@@ -181,22 +210,7 @@ class BinaryTreeVisualizer:
             self.sidebar.array = new_array
             self.sidebar.update_array_display(new_array)
             return
-        
-    def tree_to_array(self, root):
-        # Chuyển cây sang mảng bằng duyệt BFS, bỏ qua các node có giá trị 0
-        result = []
-        queue = [root]
-        while queue:
-            current = queue.pop(0)
-            if current:
-                result.append(current.val)
-                queue.append(current.left)
-                queue.append(current.right)
-            else:
-                result.append(0)
-        print("Updated array:{result}")
-        return result
-    
+
     def switch_node(self, node):
  # Hiển thị popup để nhập giá trị node cần hoán đổi
         popup = tk.Toplevel(self.canvas)
@@ -222,27 +236,23 @@ class BinaryTreeVisualizer:
 
         tk.Button(popup, text="Switch", command=lambda: self.perform_switch(node, value_entry), font=("Arial", 12)).pack(pady=10)
 
-    def perform_switch(self, node, value_entry):
-# Thực hiện hoán đổi giá trị giữa 2 node
+    def perform_switch(self, node, value_entry, popup):
         try:
             target_value = int(value_entry.get())
             target_node = self.find_node_by_value(self.root, target_value)
             if target_node is None:
                 messagebox.showwarning("Node Not Found", f"Node with value {target_value} not found.")
                 return
-            
-            node.val, target_node.val = target_node.val, node.val
-            self.draw_tree(self.root)
+
+            node.val, target_node.val = target_node.val, node.val  # Hoán đổi giá trị
+            self.draw_tree(self.root)  # Vẽ lại cây
             if self.sidebar:
-                new_array = self.tree_to_array(self.root)
-                print(f"Updated array after switch: {new_array}") 
+                new_array = self.tree_to_array(self.root)  # Cập nhật mảng
                 self.sidebar.array = new_array
                 self.sidebar.update_array_display(new_array)
-                value_entry.master.destroy()
+            popup.destroy()
         except ValueError:
             messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
-        except Exception as e:
-            messagebox.showerror("Error", f"An unexpected error occurred: {e}")
 
     def find_node_by_value(self, root, value):
 # Tìm node theo giá trị
@@ -255,74 +265,6 @@ class BinaryTreeVisualizer:
             return left_result
         return self.find_node_by_value(root.right, value)
 
-    def draw_tree(self, root):
-        self.canvas.delete("all")
-        self.nodes_positions = []
-        if root:
-            self._draw_subtree(root, 500, 40, 250)
-
-    def add_random_child(self, node):
-        new_value = random.randint(1, 100)
-        new_node = TreeNode(new_value)
-        direction = random.choice(["left", "right"])
-        if direction == "left":
-            if node.left is None:
-                node.left = new_node
-            elif node.right is None:
-                node.right = new_node
-        else:
-            if node.right is None:
-                node.right = new_node
-            elif node.left is None:
-                node.left = new_node
-        if self.sidebar:
-            new_array = self.tree_to_array(self.root)
-            self.sidebar.array = new_array
-            self.sidebar.update_array_display(new_array)
-    def tree_to_array(self, root):
-        result = []
-        queue = [root]
-        while queue:
-            current = queue.pop(0)
-        if current:
-            result.append(current.val)
-            queue.append(current.left)
-            queue.append(current.right)
-        else:
-            result.append(0)  # Thêm giá trị 0 nếu node không tồn tại
-        return result
-    def draw_tree(self, root):
-        self.canvas.delete("all")
-        self.nodes_positions = []
-        if root:
-            self._draw_subtree(root, 500, 40, 250)
-    
-    def _draw_subtree(self, node, x, y, x_offset):
-        if node.left:
-            self.canvas.create_line(x, y, x - x_offset, y + self.level_height)
-            self._draw_subtree(node.left, x - x_offset, y + self.level_height, x_offset // 2)
-        if node.right:
-            self.canvas.create_line(x, y, x + x_offset, y + self.level_height)
-            self._draw_subtree(node.right, x + x_offset, y + self.level_height, x_offset // 2)
-
-        color = "grey" if node == self.highlighted_node else "white"
-        self.canvas.create_oval(x - self.node_radius, y - self.node_radius,
-                                x + self.node_radius, y + self.node_radius, fill=color)
-        self.canvas.create_text(x, y, text=str(node.val), font=("Arial", 12, "bold"))
-        self.nodes_positions.append((x, y, node))
-    def tree_to_array(self, root):
-        result = []
-        queue = [root]
-        while queue:
-            current = queue.pop(0)
-            if current:
-                left_val = current.left.val if current.left else 0
-                right_val = current.right.val if current.right else 0
-                result.extend([current.val, left_val, right_val])
-                queue.append(current.left)
-                queue.append(current.right)
-        return result
-    
     def _draw_node(self, node, x, y, dx, level):
         if node is None:
             return

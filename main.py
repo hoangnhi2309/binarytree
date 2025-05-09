@@ -34,15 +34,20 @@ if __name__ == "__main__":
     # Visualizer attached to the canvas
     visualizer = BinaryTreeVisualizer(main_area)
     visualizer.bind_click_event()  # Make sure this method is correctly defined in BinaryTreeVisualizer
-
+    visualizer.sidebar = sidebar  # Assign the sidebar to the visualizer
     # Assign visualizer and controller to the sidebar
     sidebar.visualizer = visualizer
     sidebar.controller = visualizer.controller  # Ensure the controller is correctly assigned
+
 
     # Ensure sidebar has a tree_root initialized and passed to traversal bar
     sidebar.tree_root = None  # or initialize it with an empty tree or root node as needed
 
     # Traversal bar attached at the bottom of the canvas area
     traversal_bar = TraversalBar(right_frame, visualizer, tree_getter=lambda: sidebar.tree_root)
+
+
+
+
 
     root.mainloop()

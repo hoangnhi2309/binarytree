@@ -18,20 +18,25 @@ class TreeNode:
         self.right = None
 
 class Sidebar(tk.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, show_status=None):
         super().__init__(parent, bg="grey", width=400)
-         # Khởi tạo visualizer và controller
+        self.master = parent
+        self.show_status = show_status 
         self.visualizer = BinaryTreeVisualizer(self)
         self.controller = Controller(self.visualizer, self)
-        self.visualizer.controller = self.controller  # Gán controller cho visualizer
+        self.visualizer.controller = self.controller
         self.pack(side="left", fill="y")
         self.pack_propagate(False)
-        self.tree_root = None
+
+        self.notification_label = tk.Label(self.master, text="", bg="green", fg="white", font=("Arial", 12), padx=10, pady=5)
+        self.notification_label.place(relx=1.0, rely=0.0, x=-10, y=10, anchor="ne")  # Đặt ở góc phải trên
+
         self.array = []
-        self.highlighted_node = None
+        self.highlighted_node = None # <-- OK vì giờ đã có trong đối số
 
         array_label = tk.Label(self, text="Array:", font=("Arial", 20, "bold"), bg="grey", fg="black")
         array_label.pack(anchor="w", padx=20, pady=(0, 5))
+
         array_frame = tk.Frame(self, bg="grey")
         array_frame.pack(padx=20, pady=10, fill="both", expand=False)
 
@@ -78,6 +83,7 @@ class Sidebar(tk.Frame):
         self.create_modern_button("Save to file", self.save_tree_to_file)
         self.create_modern_button("Load from file", self.load_tree_from_file)
 
+    
     def format_array_multiline(self, array):
         lines = []
         for i in range(0, len(array), 3):
@@ -85,7 +91,7 @@ class Sidebar(tk.Frame):
             line = ", ".join(str(val) for val in group)
             lines.append(line)
         return "\n".join(lines)
-
+    
     def update_array_display(self, array):
         self.array_display.config(state="normal")
         self.array_display.delete("1.0", tk.END)
@@ -94,7 +100,7 @@ class Sidebar(tk.Frame):
 
     def save_tree_to_file(self):
         if not self.array:
-            messagebox.showwarning("Empty Tree", "There is no tree to save.")
+            self.show_toast_notification("No tree to save.")
             return
 
         file_path = asksaveasfilename(
@@ -104,16 +110,50 @@ class Sidebar(tk.Frame):
         )
 
         if not file_path:
-            return  # người dùng bấm Cancel
+            return  # Người dùng bấm Cancel
 
         content = repr(self.array)
         try:
             with open(file_path, "w") as f:
                 f.write(content)
-            messagebox.showinfo("Success", f"Tree saved to:\n{file_path}")
+            self.show_toast_notification(f"Tree successfully saved to \n{file_path}")
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to save file:\n{e}")
-    
+            self.show_toast_notification(f"Error saving file \n{e}")
+
+    def show_toast_notification(self, message, duration=3000):
+        toast = tk.Toplevel(self.master)
+        toast.overrideredirect(True)
+        toast.attributes("-topmost", True)
+
+        width = 400
+        screen_width = toast.winfo_screenwidth()
+        x = screen_width - width - 10
+        y = 100
+
+        # Tạo frame chứa label, thêm padding rõ ràng
+        frame = tk.Frame(toast, bg="grey", padx=10, pady=10)
+        frame.pack(fill="both", expand=True)
+
+        label = tk.Label(
+            frame,
+            text=message,
+            bg="grey",
+            fg="black",
+            font=("Arial", 16),
+            wraplength=width - 40,
+            justify="left",
+            anchor="nw"  # căn trái
+        )
+        label.pack(fill="both", expand=True)
+
+    # Cập nhật để đo chiều cao chính xác
+        label.update_idletasks()
+        height = label.winfo_reqheight() + 20
+
+        toast.geometry(f"{width}x{height}+{x}+{y}")
+        toast.after(duration, toast.destroy)
+
+
     def load_tree_from_file(self):
         file_path = askopenfilename(
             defaultextension=".txt",
@@ -145,22 +185,6 @@ class Sidebar(tk.Frame):
                 messagebox.showwarning("Warning", "Loaded file does not represent a valid tree structure.")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load tree:\n{e}")
-    def build_tree_from_list(values):
-        if not values:
-            return None
-
-        nodes = [TreeNode(val) if val != 0 else None for val in values]
-        for i in range(len(values)):
-            if nodes[i] is not None:
-                left_index = 2 * i + 1
-                right_index = 2 * i + 2
-                if left_index < len(values):
-                    nodes[i].left = nodes[left_index]
-                if right_index < len(values):
-                    nodes[i].right = nodes[right_index]
-        return nodes[0]
-
-
 
 
     def on_search_node(self):
@@ -214,7 +238,6 @@ class Sidebar(tk.Frame):
         self.max_entry.bind("<KeyRelease>", lambda e: self.update_max_depth_hint())
 
         self.update_max_depth_hint()  # Cập nhật ban đầu
-    
     def create_tree(self):
         try:
             min_value = int(self.min_entry.get())
@@ -291,22 +314,22 @@ class Sidebar(tk.Frame):
             return sample
 
     def update_max_depth_hint(self):
-            try:
-                min_value = int(self.min_entry.get())
-                max_value = int(self.max_entry.get())
-                available_values = max_value - min_value + 1
+        try:
+            min_value = int(self.min_entry.get())
+            max_value = int(self.max_entry.get())
+            available_values = max_value - min_value + 1
 
-                # Tính độ sâu tối đa
-                max_depth = 0
-                while (2**max_depth - 1) <= available_values:
-                    max_depth += 1
-                max_depth -= 1
+            # Tính độ sâu tối đa có thể
+            max_depth = 0
+            while (2**max_depth - 1) <= available_values:
+                max_depth += 1
+            max_depth -= 1
 
-                # Hiển thị gợi ý
-                self.depth_entry.delete(0, tk.END)
-                self.depth_entry.insert(0, str(max_depth))
-            except ValueError:
-                pass 
+            # Hiển thị gợi ý ra label (không ép người dùng)
+            self.depth_hint_label.config(text=f"Suggested max depth: {max_depth}")
+        except ValueError:
+            self.depth_hint_label.config(text="")
+
 
     def on_clear_tree(self):
         self.tree_root = None
@@ -391,11 +414,9 @@ class Sidebar(tk.Frame):
         }
 
         # Hàm để thay đổi màu nền khi di chuột qua
-        def on_enter(e, button):
-            button.config(bg="#45a049")  # Màu nền khi di chuột qua
+        def on_enter(e): e.widget.config(bg="#45a049")
+        def on_leave(e): e.widget.config(bg="#4CAF50")
 
-        def on_leave(e, button):
-            button.config(bg="#4CAF50")  # Màu nền khi chuột rời đi
 
         # Tạo các nút lựa chọn duyệt cây
         preorder_button = tk.Button(popup, text="Preorder", command=lambda: [on_select("preorder"), popup.destroy()], **button_style)
