@@ -277,6 +277,32 @@ class BinaryTreeVisualizer:
         if node.right is not None:
             self._draw_line(x, y, x + dx, y + self.level_height)
             self._draw_node(node.right, x + dx, y + self.level_height, dx / 2, level + 1)
+            
+# dùng kết hợp với load cây
+    def build_from_array(self, array):
+        if not array:
+            self.root = None
+            self.draw_tree(None)
+            return
+
+        nodes = []
+        for val in array:
+            node = TreeNode(val) if val != 0 else None
+            nodes.append(node)
+
+        child_index = 1
+        for i in range(len(nodes)):
+            node = nodes[i]
+            if node is not None:
+                if child_index < len(nodes):
+                    node.left = nodes[child_index]
+                    child_index += 1
+                if child_index < len(nodes):
+                    node.right = nodes[child_index]
+                    child_index += 1
+
+        self.root = nodes[0]
+        self.draw_tree(self.root)
 
 
 
