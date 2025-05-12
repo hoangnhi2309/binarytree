@@ -283,7 +283,54 @@ class BinaryTreeVisualizer:
         if node.right is not None:
             self._draw_line(x, y, x + dx, y + self.level_height)
             self._draw_node(node.right, x + dx, y + self.level_height, dx / 2, level + 1)
+    
+    # Thêm nút "Edit Array" vào Sidebar hoặc một vị trí phù hợp
+        edit_array_button = tk.Button(self.sidebar, text="Edit Array", command=self.sidebar.edit_array)
+        edit_array_button.pack(pady=10)
 
+    def edit_array(self):
+        if not self.array:
+            messagebox.showwarning("No Array", "The array is empty. Please generate a tree first.")
+            return
+
+        # Tạo popup chỉnh sửa mảng
+        popup = tk.Toplevel(self)
+        popup.title("Edit Array")
+        popup.geometry("400x300")
+        popup.transient(self.winfo_toplevel())
+
+        tk.Label(popup, text="Edit Array Values:", font=("Arial", 12)).pack(pady=10)
+
+    # Hiển thị các ô nhập cho từng giá trị trong mảng
+        entries = []
+        for i, value in enumerate(self.array):
+            frame = tk.Frame(popup)
+        frame.pack(fill="x", pady=2)
+        tk.Label(frame, text=f"Index {i}:", font=("Arial", 10)).pack(side="left", padx=5)
+        entry = tk.Entry(frame, font=("Arial", 10))
+        entry.insert(0, str(value))
+        entry.pack(side="left", padx=5)
+        entries.append(entry)
+
+    # Nút lưu thay đổi
+        tk.Button(popup, text="Save", command=lambda: self.save_array(entries, popup)).pack(pady=10)
+
+def save_array(self, entries, popup):
+    try:
+        # Lấy giá trị mới từ các ô nhập
+        new_array = [int(entry.get()) for entry in entries]
+
+        # Cập nhật mảng và cây
+        self.array = new_array
+        self.tree_root = self.build_tree_from_list(new_array)
+        if self.visualizer:
+            self.visualizer.set_root(self.tree_root)
+            self.visualizer.draw_tree(self.tree_root)
+
+        # Đóng popup
+        popup.destroy()
+    except ValueError:
+        messagebox.showwarning("Invalid Input", "Please enter valid integers for all array values.")
 
 
 

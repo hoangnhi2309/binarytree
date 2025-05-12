@@ -419,3 +419,5 @@ class Sidebar(tk.Frame):
 
         # Đảm bảo cửa sổ popup là luôn trên
         popup.grab_set()
+
+    
