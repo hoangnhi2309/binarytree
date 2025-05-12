@@ -211,30 +211,44 @@ class Sidebar(tk.Frame):
         self.popup = tk.Toplevel(self)
         self.popup.title("Create Random Tree")
         self.popup.geometry("300x250")
-        self.popup.transient(self.winfo_toplevel())  # Hiển thị popup ở giữa cửa sổ chính
+        self.popup.transient(self.winfo_toplevel())  # Popup nằm giữa cửa sổ chính
 
-        tk.Label(self.popup, text="Min Value:", font=("Arial", 12)).pack(pady=5)
+        # Min Value
+        tk.Label(self.popup, text="Min Value:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(10, 2))
         self.min_entry = tk.Entry(self.popup, font=("Arial", 12))
-        self.min_entry.insert(0, "1")  # Giá trị mặc định là 1
-        self.min_entry.pack(pady=5)
+        self.min_entry.insert(0, "1")
+        self.min_entry.pack(fill="x", padx=10, pady=(0, 10))
 
-        tk.Label(self.popup, text="Max Value:", font=("Arial", 12)).pack(pady=5)
+        # Max Value
+        tk.Label(self.popup, text="Max Value:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(0, 2))
         self.max_entry = tk.Entry(self.popup, font=("Arial", 12))
-        self.max_entry.insert(0, "99")  # Giá trị mặc định là 99
-        self.max_entry.pack(pady=5)
+        self.max_entry.insert(0, "99")
+        self.max_entry.pack(fill="x", padx=10, pady=(0, 10))
 
-        tk.Label(self.popup, text="Tree Depth:", font=("Arial", 12)).pack(pady=5)
+        # Tree Depth
+        tk.Label(self.popup, text="Tree Depth:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(0, 2))
         self.depth_entry = tk.Entry(self.popup, font=("Arial", 12))
-        self.depth_entry.pack(pady=5)
-        # self.depth_hint_label = tk.Label(self.popup, text="", font=("Arial", 10), fg="blue")
-        # self.depth_hint_label.pack(pady=5)
+        self.depth_entry.pack(fill="x", padx=10, pady=(0, 10))
 
-        tk.Button(self.popup, text="Create", command=self.create_tree, font=("Arial", 12)).pack(pady=10)
- # Gắn sự kiện để tự động tính depth tối đa khi thay đổi Min/Max
+        # Frame chứa 2 nút Create và Cancel căn phải
+        button_frame = tk.Frame(self.popup)
+        button_frame.pack(pady=10, padx=10, fill="x")
+
+        # Spacer để đẩy nút sang phải
+        tk.Label(button_frame).pack(side="left", expand=True)
+
+        # Nút Create
+        create_button = tk.Button(button_frame, text="Create", command=self.create_tree, font=("Arial", 12), bg="grey")
+        create_button.pack(side="right", padx=(5, 0))
+
+        # Nút Cancel (màu đỏ)
+        cancel_button = tk.Button(button_frame, text="Cancel", command=self.popup.destroy, font=("Arial", 12), bg="grey", fg="black")
+        cancel_button.pack(side="right", padx=(0, 5))
+
+        # Gắn sự kiện cập nhật depth tối đa
         self.min_entry.bind("<KeyRelease>", lambda e: self.update_max_depth_hint())
         self.max_entry.bind("<KeyRelease>", lambda e: self.update_max_depth_hint())
         self.update_max_depth_hint()
-
 
     def create_tree(self):
         try:
