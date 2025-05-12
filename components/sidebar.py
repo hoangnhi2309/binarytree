@@ -79,18 +79,22 @@ class Sidebar(tk.Frame):
 #tạo button 
         self.create_modern_button("Create random tree", self.on_random_tree)
         self.create_modern_button("Delete tree", self.on_clear_tree)
-        self.create_modern_button("Traversal", self.show_traversal_options)
+        # self.create_modern_button("Traversal", self.show_traversal_options)
         self.create_modern_button("Save to file", self.save_tree_to_file)
         self.create_modern_button("Load from file", self.load_tree_from_file)
 
     
     def format_array_multiline(self, array):
         lines = []
-        for i in range(0, len(array), 3):
-            group = array[i:i+3]
-            line = ", ".join(str(val) for val in group)
-            lines.append(line)
+        for i, val in enumerate(array):
+            if val == 0:
+                continue  # Bỏ qua nếu node cha là rỗng
+            left = array[2 * i + 1] if 2 * i + 1 < len(array) and array[2 * i + 1] != 0 else "0"
+            right = array[2 * i + 2] if 2 * i + 2 < len(array) and array[2 * i + 2] != 0 else "0"
+            lines.append(f"{val}, {left}, {right}")
         return "\n".join(lines)
+
+
     
     def update_array_display(self, array):
         self.array_display.config(state="normal")
@@ -185,6 +189,8 @@ class Sidebar(tk.Frame):
                 self.highlighted_node = self._find_node(self.tree_root, value)
                 if self.visualizer:
                     self.visualizer.highlighted_node = self.highlighted_node
+                    self.visualizer.scroll_to_node(self.highlighted_node)
+
                     self.visualizer.draw_tree(self.tree_root)
             else:
                 messagebox.showinfo("Node Not Found", f"Node {value} not found in the array.")
@@ -204,41 +210,45 @@ class Sidebar(tk.Frame):
     def on_random_tree(self):
         self.popup = tk.Toplevel(self)
         self.popup.title("Create Random Tree")
-        self.popup.geometry("300x220")
-        self.popup.transient(self.winfo_toplevel())
+        self.popup.geometry("300x250")
+        self.popup.transient(self.winfo_toplevel())  # Popup nằm giữa cửa sổ chính
 
-        # Frame tổng cho phần nhập liệu
-        form_frame = tk.Frame(self.popup)
-        form_frame.pack(fill="both", expand=True, padx=15, pady=10)
-
-        # Label + Entry cho Min
-        tk.Label(form_frame, text="Min Value:", font=("Arial", 13), anchor="w").pack(fill="x")
-        self.min_entry = tk.Entry(form_frame, font=("Arial", 13))
+        # Min Value
+        tk.Label(self.popup, text="Min Value:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(10, 2))
+        self.min_entry = tk.Entry(self.popup, font=("Arial", 12))
         self.min_entry.insert(0, "1")
-        self.min_entry.pack(fill="x", pady=(0, 5), expand=True)
+        self.min_entry.pack(fill="x", padx=10, pady=(0, 10))
 
-        # Max
-        tk.Label(form_frame, text="Max Value:", font=("Arial", 13), anchor="w").pack(fill="x")
-        self.max_entry = tk.Entry(form_frame, font=("Arial", 13))
+        # Max Value
+        tk.Label(self.popup, text="Max Value:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(0, 2))
+        self.max_entry = tk.Entry(self.popup, font=("Arial", 12))
         self.max_entry.insert(0, "99")
-        self.max_entry.pack(fill="x", pady=(0, 5), expand=True)
-        # Depth
-        tk.Label(form_frame, text="Tree Depth:", font=("Arial", 13), anchor="w").pack(fill="x")
-        self.depth_entry = tk.Entry(form_frame, font=("Arial", 13))
-        self.depth_entry.pack(fill="x", pady=(0, 5), expand=True)
-        # Nút Cancel + Create nằm cuối
-        button_frame = tk.Frame(self.popup)
-        button_frame.pack(fill="x", pady=10, padx=15)
-        create_btn = tk.Button(button_frame, text="Create", font=("Arial", 13), command=self.create_tree)
-        create_btn.pack(side="right")
+        self.max_entry.pack(fill="x", padx=10, pady=(0, 10))
 
-        cancel_btn = tk.Button(button_frame, text="Cancel", font=("Arial", 13), command=self.popup.destroy)
-        cancel_btn.pack(side="right", padx=5)
-        # Gợi ý depth
+        # Tree Depth
+        tk.Label(self.popup, text="Tree Depth:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(0, 2))
+        self.depth_entry = tk.Entry(self.popup, font=("Arial", 12))
+        self.depth_entry.pack(fill="x", padx=10, pady=(0, 10))
+
+        # Frame chứa 2 nút Create và Cancel căn phải
+        button_frame = tk.Frame(self.popup)
+        button_frame.pack(pady=10, padx=10, fill="x")
+
+        # Spacer để đẩy nút sang phải
+        tk.Label(button_frame).pack(side="left", expand=True)
+
+        # Nút Create
+        create_button = tk.Button(button_frame, text="Create", command=self.create_tree, font=("Arial", 12), bg="grey")
+        create_button.pack(side="right", padx=(5, 0))
+
+        # Nút Cancel (màu đỏ)
+        cancel_button = tk.Button(button_frame, text="Cancel", command=self.popup.destroy, font=("Arial", 12), bg="grey", fg="black")
+        cancel_button.pack(side="right", padx=(0, 5))
+
+        # Gắn sự kiện cập nhật depth tối đa
         self.min_entry.bind("<KeyRelease>", lambda e: self.update_max_depth_hint())
         self.max_entry.bind("<KeyRelease>", lambda e: self.update_max_depth_hint())
         self.update_max_depth_hint()
-
 
     def create_tree(self):
         try:
@@ -370,6 +380,7 @@ class Sidebar(tk.Frame):
         # Hàm duyệt cây theo mode (preorder, inorder, postorder)
         if root is None:
             return []
+
         if mode == "preorder":
             return [root.val] + self.traverse_tree(root.left, mode) + self.traverse_tree(root.right, mode)
         elif mode == "inorder":
@@ -378,7 +389,6 @@ class Sidebar(tk.Frame):
             return self.traverse_tree(root.left, mode) + self.traverse_tree(root.right, mode) + [root.val]
         else:
             return []
-        
     def show_traversal_options(self):
         if not self.tree_root:
             messagebox.showwarning("Warning", "Tree is empty. Please create or load a tree.")
@@ -389,43 +399,34 @@ class Sidebar(tk.Frame):
             result_str = " -> ".join(map(str, result))
             # Thêm tên loại duyệt vào thông báo
             messagebox.showinfo(f"{mode.capitalize()} Traversal", f"{mode.capitalize()} Traversal: {result_str}")
-        self.popup = tk.Toplevel(self)
-        self.popup.title("Choose Traversal Method")
-        self.popup.geometry("300x220")
-        self.popup.transient(self.winfo_toplevel())
+
+        # Tạo cửa sổ popup
+        popup = tk.Toplevel(self)
+        popup.title("Choose Traversal Method")
+        popup.geometry("300x250")  # Tăng kích thước cửa sổ nếu cần
+        popup.config(bg="#f7f7f7")  # Màu nền sáng cho cửa sổ
 
         # Tiêu đề cửa sổ
-        tk.Label(self.popup, text="Select Traversal Type:", font=("Arial", 13, "bold")).pack(pady=10)
+        tk.Label(popup, text="Select Traversal Type:", font=("Arial", 14, "bold"), bg="#f7f7f7").pack(pady=20)
 
         # Định dạng nút bấm
         button_style = {
             "font": ("Arial", 12),
-            "bg": "#E6E6E6",  # Màu nền nút
+            "bg": "#4CAF50",  # Màu nền nút
             "fg": "black",  # Màu chữ
             "relief": "raised",  # Đường viền nổi cho nút
             "bd": 0,  # Độ dày đường viền
             "width": 20,
             "height": 2,
             "activebackground": "#45a049",  # Màu nền khi hover
-            "activeforeground": "black",  # Màu chữ khi hover
+            "activeforeground": "white",  # Màu chữ khi hover
             "highlightbackground": "black",  # Viền đen khi có focus
-            "highlightthickness": 0  # Độ dày viền khi có focus
+            "highlightthickness": 2  # Độ dày viền khi có focus
         }
 
         # Hàm để thay đổi màu nền khi di chuột qua
         def on_enter(e): e.widget.config(bg="#45a049")
         def on_leave(e): e.widget.config(bg="#4CAF50")
-
-        # Tạo các nút lựa chọn duyệt cây
-        preorder_button = tk.Button(self.popup, text="Preorder", command=lambda: [on_select("preorder"), self.popup.destroy()], **button_style)
-        preorder_button.pack(pady=10)
-        preorder_button.bind("<Enter>", lambda e: on_enter(e, preorder_button))  # Khi di chuột qua nút
-        preorder_button.bind("<Leave>", lambda e: on_leave(e, preorder_button))  # Khi chuột rời khỏi nút
-
-        inorder_button = tk.Button(self.popup, text="Inorder", command=lambda: [on_select("inorder"), self.popup.destroy()], **button_style)
-        inorder_button.pack(pady=10)
-        inorder_button.bind("<Enter>", lambda e: on_enter(e, inorder_button))  # Khi di chuột qua nút
-        inorder_button.bind("<Leave>", lambda e: on_leave(e, inorder_button))  # Khi chuột rời khỏi nút
 
         postorder_button = tk.Button(self.popup, text="Postorder", command=lambda: [on_select("postorder"), self.popup.destroy()], **button_style)
         postorder_button.pack(pady=10)
@@ -445,3 +446,32 @@ class Sidebar(tk.Frame):
             fg="black"
         )
         bordered_label.pack(pady=10)
+
+    #     # Tạo các nút lựa chọn duyệt cây
+        preorder_button = tk.Button(popup, text="Preorder", command=lambda: [on_select("preorder"), popup.destroy()], **button_style)
+        preorder_button.pack(pady=10)
+        preorder_button.bind("<Enter>", lambda e: on_enter(e, preorder_button))  # Khi di chuột qua nút
+        preorder_button.bind("<Leave>", lambda e: on_leave(e, preorder_button))  # Khi chuột rời khỏi nút
+
+        inorder_button = tk.Button(popup, text="Inorder", command=lambda: [on_select("inorder"), popup.destroy()], **button_style)
+        inorder_button.pack(pady=10)
+        inorder_button.bind("<Enter>", lambda e: on_enter(e, inorder_button))  # Khi di chuột qua nút
+        inorder_button.bind("<Leave>", lambda e: on_leave(e, inorder_button))  # Khi chuột rời khỏi nút
+
+        postorder_button = tk.Button(popup, text="Postorder", command=lambda: [on_select("postorder"), popup.destroy()], **button_style)
+        postorder_button.pack(pady=10)
+        postorder_button.bind("<Enter>", lambda e: on_enter(e, postorder_button))  # Khi di chuột qua nút
+        postorder_button.bind("<Leave>", lambda e: on_leave(e, postorder_button))  # Khi chuột rời khỏi nút
+
+    #     # Tạo nút đóng (Close)
+        close_button = tk.Button(popup, text="Close", command=lambda: popup.destroy(), font=("Arial", 12), bg="#f44336", fg="white", relief="raised", bd=2, width=20, height=2)
+        close_button.pack(pady=10)
+
+    #     # Đảm bảo cửa sổ popup là luôn trên
+    def show_traversal_options(self):
+        popup = tk.Toplevel(self)
+        popup.title("Choose Traversal Method")
+        popup.geometry("300x250")  # Adjust size as needed
+        popup.config(bg="#f7f7f7")  # Background color for the popup
+
+        popup.grab_set()
