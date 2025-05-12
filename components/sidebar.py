@@ -157,39 +157,29 @@ class Sidebar(tk.Frame):
         toast.geometry(f"{width}x{height}+{x}+{y}")
         toast.after(duration, toast.destroy)
 
-
     def load_tree_from_file(self):
         file_path = askopenfilename(
             defaultextension=".txt",
             filetypes=[("Text Files", "*.txt")],
-            title="Load Tree From"
+            title="Open Tree File"
         )
+
         if not file_path:
             return
+
         try:
             with open(file_path, "r") as f:
                 content = f.read()
-                loaded_array = ast.literal_eval(content)
-
-            if not isinstance(loaded_array, list):
-                raise ValueError("Loaded content is not a valid list.")
-
-            self.array = loaded_array
-
-            # Xây lại cây từ mảng, coi số 0 là node rỗng
-            self.tree_root = self.build_tree_from_list(self.array)
-
-            if self.visualizer and self.tree_root:
-                self.visualizer.set_root(self.tree_root)
-                self.visualizer.draw_tree(self.tree_root)
-                new_array = self.visualizer.tree_to_array(self.tree_root)
-                self.array = new_array
-                self.update_array_display(self.array)
-            elif not self.tree_root:
-                messagebox.showwarning("Warning", "Loaded file does not represent a valid tree structure.")
+                array = ast.literal_eval(content)
+                if isinstance(array, list):
+                    self.array = array
+                    self.visualizer.build_from_array(array)
+                    self.update_array_display(array)
+                    self.show_toast_notification(f"Tree loaded from \n{file_path}")
+                else:
+                    self.show_toast_notification("Invalid file format.")
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load tree:\n{e}")
-
+            self.show_toast_notification(f"Error loading file \n{e}")
 
     def on_search_node(self):
         value = self.search_entry.get()
@@ -216,10 +206,9 @@ class Sidebar(tk.Frame):
         if left_result:
             return left_result
         return self._find_node(root.right, value)
-
+    
     def on_random_tree(self):
- # Tạo popup để nhập min, max và độ sâu
-        self.popup = tk.Toplevel(self)  # Lưu popup vào self.popup
+        self.popup = tk.Toplevel(self)
         self.popup.title("Create Random Tree")
         self.popup.geometry("300x250")
         self.popup.transient(self.winfo_toplevel())  # Hiển thị popup ở giữa cửa sổ chính
@@ -244,8 +233,9 @@ class Sidebar(tk.Frame):
  # Gắn sự kiện để tự động tính depth tối đa khi thay đổi Min/Max
         self.min_entry.bind("<KeyRelease>", lambda e: self.update_max_depth_hint())
         self.max_entry.bind("<KeyRelease>", lambda e: self.update_max_depth_hint())
+        self.update_max_depth_hint()
 
-        self.update_max_depth_hint()  # Cập nhật ban đầu
+
     def create_tree(self):
         try:
             min_value = int(self.min_entry.get())
@@ -337,7 +327,6 @@ class Sidebar(tk.Frame):
             self.depth_hint_label.config(text=f"Suggested max depth: {max_depth}")
         except ValueError:
             self.depth_hint_label.config(text="")
-
 
     def on_clear_tree(self):
         self.tree_root = None
