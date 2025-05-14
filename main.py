@@ -4,11 +4,20 @@ from components.header import Header
 from components.sidebar import Sidebar
 from visualizer.binary_tree_visualizer import BinaryTreeVisualizer
 from components.traversal_bar import TraversalBar
+from visualizer.bst_visualizer import BSTVisualizer
+from visualizer.avl_visualizer import AVLVisualizer
+
+# Map các visualizer
+visualizers = {
+    "Binary Tree": BinaryTreeVisualizer,
+    "Binary Search Tree": BSTVisualizer,
+    "AVL Tree": AVLVisualizer
+}
 
 if __name__ == "__main__":
     root = tk.Tk()
     root.geometry("1200x700")
-    root.title("TreeSim")
+    root.title("Tree Management")
 
     # Header on top
     header = Header(root, on_menu_click=lambda name: print(f"Chuyển đến {name}"))

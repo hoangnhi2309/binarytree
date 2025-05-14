@@ -82,11 +82,6 @@ class BinaryTreeVisualizer:
             if bbox:
                 self.canvas.config(scrollregion=bbox)
 
-
-
-
-
-
     def _draw_subtree(self, node, x, y, x_offset, depth):
         if node.left:
             left_x = x - x_offset
@@ -135,8 +130,6 @@ class BinaryTreeVisualizer:
                 self.canvas.yview_moveto(y_target / total_height)
                 break
 
-
-
     def tree_to_array(self, root):
         if not root:
             return []
@@ -155,13 +148,34 @@ class BinaryTreeVisualizer:
     def edit_node(self, node):
         popup = tk.Toplevel(self.canvas)
         popup.title("Edit Node")
-        popup.geometry("300x150")
+        popup.geometry("300x130")
         popup.transient(self.canvas.winfo_toplevel())
 
-        tk.Label(popup, text="New Value:", font=("Arial", 12)).pack(pady=10)
+        # Label New Value (căn trái)
+        tk.Label(popup, text="New Value:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(15, 2))
+
+        # Entry New Value (căn chỉnh giống on_random_tree)
         value_entry = tk.Entry(popup, font=("Arial", 12))
-        value_entry.pack(pady=10)
-        tk.Button(popup, text="Save", command=lambda: self.save_value(node, value_entry, popup), font=("Arial", 12)).pack(pady=10)
+        value_entry.pack(fill="x", padx=10, pady=(0, 15))
+
+        # Frame chứa nút Edit và Cancel căn phải
+        button_frame = tk.Frame(popup)
+        button_frame.pack(pady=10, padx=10, fill="x")
+
+        # Spacer đẩy nút sang phải
+        tk.Label(button_frame).pack(side="left", expand=True)
+
+        # Nút Edit (Save)
+        save_button = tk.Button(button_frame, text="Edit", command=lambda: self.save_value(node, value_entry, popup), font=("Arial", 12), bg="grey")
+        save_button.pack(side="right", padx=(5, 0))
+
+        # Nút Cancel
+        cancel_button = tk.Button(button_frame, text="Cancel", command=popup.destroy, font=("Arial", 12), bg="grey", fg="black")
+        cancel_button.pack(side="right", padx=(0, 5))
+
+
+
+
 
     def save_value(self, node, value_entry, popup):
         try:
@@ -175,6 +189,7 @@ class BinaryTreeVisualizer:
             popup.destroy()
         except ValueError:
             messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
+            
 
     def delete_node(self, node):
         def remove_node(parent, target):
@@ -229,14 +244,31 @@ class BinaryTreeVisualizer:
     def switch_node(self, node):
         popup = tk.Toplevel(self.canvas)
         popup.title("Switch Node")
-        popup.geometry("300x200")
+        popup.geometry("300x130")
         popup.transient(self.canvas.winfo_toplevel())
 
-        tk.Label(popup, text="Enter value of the node to switch with:", font=("Arial", 12)).pack(pady=10)
-        value_entry = tk.Entry(popup, font=("Arial", 12))
-        value_entry.pack(pady=10)
+        # Label căn trái
+        tk.Label(popup, text="Enter value of the node to switch with:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(15, 2))
 
-        tk.Button(popup, text="Switch", command=lambda: self.perform_switch(node, value_entry, popup), font=("Arial", 12)).pack(pady=10)
+        # Entry căn chỉnh đẹp
+        value_entry = tk.Entry(popup, font=("Arial", 12))
+        value_entry.pack(fill="x", padx=10, pady=(0, 15))
+
+        # Frame chứa nút Switch và Cancel căn phải
+        button_frame = tk.Frame(popup)
+        button_frame.pack(pady=10, padx=10, fill="x")
+
+        # Spacer đẩy nút sang phải
+        tk.Label(button_frame).pack(side="left", expand=True)
+
+        # Nút Switch
+        switch_button = tk.Button(button_frame, text="Switch", command=lambda: self.perform_switch(node, value_entry, popup), font=("Arial", 12), bg="grey")
+        switch_button.pack(side="right", padx=(5, 0))
+
+        # Nút Cancel
+        cancel_button = tk.Button(button_frame, text="Cancel", command=popup.destroy, font=("Arial", 12), bg="grey", fg="black")
+        cancel_button.pack(side="right", padx=(0, 5))
+
 
     def perform_switch(self, node, value_entry, popup):
         try:
