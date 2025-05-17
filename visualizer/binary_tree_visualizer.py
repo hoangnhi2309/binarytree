@@ -101,7 +101,6 @@ class BinaryTreeVisualizer:
         self.canvas.create_text(x, y, text=str(node.val), font=("Arial", 12, "bold"))
         self.nodes_positions.append((x, y, node))
 
-
     def get_tree_depth(self, node):
         if not node:
             return 0
@@ -165,13 +164,15 @@ class BinaryTreeVisualizer:
         # Spacer đẩy nút sang phải
         tk.Label(button_frame).pack(side="left", expand=True)
 
+        # Nút Cancel
+        cancel_button = tk.Button(button_frame, text="Cancel", command=popup.destroy, font=("Arial", 12), bg="grey", fg="black")
+        cancel_button.pack(side="right", padx=(0, 5))
+
         # Nút Edit (Save)
         save_button = tk.Button(button_frame, text="Edit", command=lambda: self.save_value(node, value_entry, popup), font=("Arial", 12), bg="grey")
         save_button.pack(side="right", padx=(5, 0))
 
-        # Nút Cancel
-        cancel_button = tk.Button(button_frame, text="Cancel", command=popup.destroy, font=("Arial", 12), bg="grey", fg="black")
-        cancel_button.pack(side="right", padx=(0, 5))
+
 
 
 
@@ -297,3 +298,71 @@ class BinaryTreeVisualizer:
         if left_result:
             return left_result
         return self.find_node_by_value(root.right, value)
+
+    def _draw_node(self, node, x, y, dx, level):
+        if node is None:
+            return
+
+        self._draw_circle(x, y, str(node.val))
+
+        if node.left is not None:
+            self._draw_line(x, y, x - dx, y + self.level_height)
+            self._draw_node(node.left, x - dx, y + self.level_height, dx / 2, level + 1)
+        if node.right is not None:
+            self._draw_line(x, y, x + dx, y + self.level_height)
+            self._draw_node(node.right, x + dx, y + self.level_height, dx / 2, level + 1)
+
+    def add_random_node(self, probability=3):
+        """
+        Add a random node based on the given probability.
+        If a random number (0-9) is less than the probability, create two child nodes.
+        Otherwise, create only a left child node.
+        """
+        random_value = random.randint(0, 9)
+        if random_value < probability:
+            self.create_two_child_nodes()
+        else:
+            self.create_left_child_node()
+
+    def create_two_child_nodes(self):
+        # Logic to create two child nodes
+        print("Created two child nodes")
+
+    def create_left_child_node(self):
+        # Logic to create only a left child node
+        print("Created left child node")
+
+    def create_random_tree(self, probability=3, max_depth=5):
+        """
+        Create a random binary tree based on the given probability.
+        If a random number (0-9) is less than the probability, create two child nodes.
+        Otherwise, create only a left child node.
+        """
+        def add_nodes(node, depth):
+            if depth >= max_depth:
+                return
+            random_value = random.randint(0, 9)
+            if random_value < probability:
+                # Create two child nodes
+                left_child = self.create_node(parent=node, position="left")
+                right_child = self.create_node(parent=node, position="right")
+                add_nodes(left_child, depth + 1)
+                add_nodes(right_child, depth + 1)
+            else:
+                # Create only a left child node
+                left_child = self.create_node(parent=node, position="left")
+                add_nodes(left_child, depth + 1)
+
+        # Start with the root node
+        root = self.create_node(value="Root")
+        add_nodes(root, depth=0)
+
+    def create_node(self, parent=None, position=None, value=None):
+        """
+        Create a single node in the binary tree.
+        This is a placeholder method and should be implemented with actual logic.
+        """
+        print(f"Created node with value: {value}, parent: {parent}, position: {position}")
+        # Replace this with actual node creation logic
+        return {"value": value, "parent": parent, "position": position}
+
