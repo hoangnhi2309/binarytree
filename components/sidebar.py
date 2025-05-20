@@ -77,7 +77,7 @@ class Sidebar(tk.Frame):
         )
         search_btn.pack(side="left", padx=(5, 0))
 #tạo button 
-        self.create_modern_button("Create random tree", self.on_random_tree)
+        self.create_random_tree_btn = self.create_modern_button("Create random tree", self.on_random_tree)
         self.create_modern_button("Apply changes", self.apply_array_edit)
         self.create_modern_button("Delete tree", self.on_clear_tree)
         # self.create_modern_button("Traversal", self.show_traversal_options)
@@ -455,6 +455,7 @@ class Sidebar(tk.Frame):
         btn.bind("<Enter>", lambda e: btn.config(bg="#e0e0e0"))
         btn.bind("<Leave>", lambda e: btn.config(bg="white"))
         btn.bind("<Button-1>", lambda e: command())
+        return btn  # <-- Thêm dòng này
     
     def traverse_tree(self, root, mode):
         # Hàm duyệt cây theo mode (preorder, inorder, postorder)
@@ -618,4 +619,12 @@ class Sidebar(tk.Frame):
         self.update_array_display(self.array)
 
         self.show_toast_notification("Đã cập nhật lại cây từ bảng.")
+
+    def set_visualizer(self, visualizer):
+        self.visualizer = visualizer
+        # Đổi tên nút nếu là BST
+        if visualizer.__class__.__name__ == "BSTVisualizer":
+            self.create_random_tree_btn.config(text="Create tree")
+        else:
+            self.create_random_tree_btn.config(text="Create random tree")
 
