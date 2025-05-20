@@ -53,5 +53,4 @@ if __name__ == "__main__":
     traversal_bar = TraversalBar(right_frame, visualizer, tree_getter=lambda: sidebar.tree_root)
     visualizer.set_controller(traversal_bar)
 
-
     root.mainloop()
