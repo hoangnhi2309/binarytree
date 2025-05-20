@@ -1,6 +1,8 @@
 import tkinter as tk
 import tkinter.messagebox as messagebox
+from tkinter.filedialog import asksaveasfilename, askopenfilename
 import random
+import ast
 
 class TreeNode:
     def __init__(self, value):
@@ -30,28 +32,35 @@ class BinaryTreeVisualizer:
         return self.root
 
     def bind_click_event(self):
-        self.canvas.bind("<Button-1>", self.on_canvas_click)
-        self.canvas.bind("<Button-3>", self.on_canvas_right_click)
-        self.canvas.bind("<Button-2>", self.on_canvas_middle_click)
+        self.canvas.bind("<Button-1>", self.on_canvas_left_click)   # Chuột trái
+        self.canvas.bind("<Button-3>", self.on_canvas_right_click)  # Chuột phải
+        self.canvas.bind("<Button-2>", self.on_canvas_right_click) # Chuột giữa
 
-    def on_canvas_click(self, event):
+    def on_canvas_left_click(self, event):
+        x, y = event.x, event.y
+        for node_x, node_y, node in self.nodes_positions:
+            if (node_x - self.node_radius <= x <= node_x + self.node_radius and
+                node_y - self.node_radius <= y <= node_y + self.node_radius):
+                self.highlighted_node = node
+                self.draw_tree(self.root)
+                return
+        self.highlighted_node = None
+        self.draw_tree(self.root)
+
+    def on_canvas_right_click(self, event):
         x, y = event.x, event.y
         for node_x, node_y, node in self.nodes_positions:
             if (node_x - self.node_radius <= x <= node_x + self.node_radius and
                 node_y - self.node_radius <= y <= node_y + self.node_radius):
                 self.show_node_menu(event, node)
-                break
-
-    def on_canvas_right_click(self, event):
-        pass
+                return
+        # Nếu không click vào node nào, hiện menu cho canvas
+        self.show_canvas_menu(event)
 
     def on_canvas_middle_click(self, event):
         pass
 
     def show_node_menu(self, event, node):
-        self.highlighted_node = node
-        self.draw_tree(self.root)
-
         menu = tk.Menu(self.canvas, tearoff=0)
         menu.add_command(label="Edit Node", command=lambda: self.edit_node(node))
         menu.add_command(label="Delete Node", command=lambda: self.delete_node(node))
@@ -60,7 +69,10 @@ class BinaryTreeVisualizer:
         add_menu.add_command(label="Right side", command=lambda: self.add_child_node(node, "right"))
         menu.add_cascade(label="Add Node", menu=add_menu)
         menu.add_command(label="Switch Node", command=lambda: self.switch_node(node))
-        menu.post(event.x_root, event.y_root)
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
 
     def draw_tree(self, root):
         self.canvas.delete("all")
@@ -248,80 +260,148 @@ class BinaryTreeVisualizer:
         except ValueError:
             messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
 
-    def find_node_by_value(self, root, value):
-        if root is None:
+    def show_canvas_menu(self, event):
+        menu = tk.Menu(self.canvas, tearoff=0)
+    # menu.add_command(label="Find node", command=self.load_tree)  # Xoá dòng này nếu không có hàm find node
+        menu.add_command(label="Find node", command=self.on_find_node)
+        menu.add_command(label="Create random tree", command=self.on_random_tree)
+        menu.add_command(label="Delete tree", command=self.on_clear_tree)
+        menu.add_command(label="Save to file", command=self.save_tree_to_file)
+        menu.add_command(label="Load from file", command=self.load_tree_from_file)
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        except Exception as e:
+            print(f"Error occurred while popping up menu: {e}")
+        finally:
+            menu.grab_release()
+    
+    def on_random_tree(self):
+    # Popup nhập thông số random tree
+        popup = tk.Toplevel(self.canvas.winfo_toplevel())
+        popup.title("Create Random Tree")
+        popup.geometry("300x220")
+        popup.transient(self.canvas.winfo_toplevel())
+
+        tk.Label(popup, text="Min Value:", font=("Arial", 12)).pack(pady=(10, 2))
+        min_entry = tk.Entry(popup, font=("Arial", 12))
+        min_entry.insert(0, "1")
+        min_entry.pack(pady=(0, 10))
+
+        tk.Label(popup, text="Max Value:", font=("Arial", 12)).pack(pady=(0, 2))
+        max_entry = tk.Entry(popup, font=("Arial", 12))
+        max_entry.insert(0, "99")
+        max_entry.pack(pady=(0, 10))
+
+        tk.Label(popup, text="Tree Depth:", font=("Arial", 12)).pack(pady=(0, 2))
+        depth_entry = tk.Entry(popup, font=("Arial", 12))
+        depth_entry.insert(0, "4")
+        depth_entry.pack(pady=(0, 10))
+
+        def create_tree_and_close():
+            try:
+                min_val = int(min_entry.get())
+                max_val = int(max_entry.get())
+                depth = int(depth_entry.get())
+                self.root = self.create_random_tree(min_val, max_val, depth)
+                self.draw_tree(self.root)
+                if self.sidebar:
+                    arr = self.tree_to_array(self.root)
+                    self.sidebar.array = arr
+                    self.sidebar.update_array_display(arr)
+                popup.destroy()
+            except Exception as e:
+                messagebox.showwarning("Invalid Input", f"Error: {e}")
+
+        tk.Button(popup, text="Create", command=create_tree_and_close, font=("Arial", 12)).pack(pady=10)
+
+    def create_random_tree(self, min_val, max_val, depth):
+        if depth <= 0:
             return None
-        if root.val == value:
-            return root
-        left_result = self.find_node_by_value(root.left, value)
-        if left_result:
-            return left_result
-        return self.find_node_by_value(root.right, value)
+        val = random.randint(min_val, max_val)
+        node = TreeNode(val)
+        if depth > 1:
+            node.left = self.create_random_tree(min_val, max_val, depth - 1)
+            node.right = self.create_random_tree(min_val, max_val, depth - 1)
+        return node
+    
+    def on_clear_tree(self):
+        self.root = None
+        self.draw_tree(self.root)
+        if self.sidebar:
+            self.sidebar.array = []
+            self.sidebar.update_array_display([])
 
-    def _draw_node(self, node, x, y, dx, level):
+    def on_find_node(self):
+        popup = tk.Toplevel(self.canvas.winfo_toplevel())
+        popup.title("Find Node")
+        popup.geometry("300x150")
+        popup.transient(self.canvas.winfo_toplevel())
+
+        tk.Label(popup, text="Enter value to find:", font=("Arial", 12)).pack(pady=10)
+        value_entry = tk.Entry(popup, font=("Arial", 12))
+        value_entry.pack(pady=10)
+
+        def find_and_highlight():
+            try:
+                value = int(value_entry.get())
+                node = self.find_node_by_value(self.root, value)
+                if node:
+                    self.highlighted_node = node
+                    self.draw_tree(self.root)
+                    self.scroll_to_node(node)
+                    popup.destroy()
+                else:
+                    messagebox.showinfo("Not found", f"Node with value {value} not found.")
+            except ValueError:
+                messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
+
+        tk.Button(popup, text="Find", command=find_and_highlight, font=("Arial", 12)).pack(pady=10)
+
+    def find_node_by_value(self, node, value):
         if node is None:
+            return None
+        if node.val == value:
+            return node
+        left = self.find_node_by_value(node.left, value)
+        if left:
+            return left
+        return self.find_node_by_value(node.right, value)
+    
+    def save_tree_to_file(self):
+        if not self.root:
+            messagebox.showwarning("No Tree", "There is no tree to save.")
             return
+        file_path = asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
+        if file_path:
+            arr = self.tree_to_array(self.root)
+            # Ghi mảng ra file, mỗi giá trị cách nhau bởi dấu cách
+            with open(file_path, "w") as f:
+                f.write(" ".join(map(str, arr)))
+            messagebox.showinfo("Save", "Tree saved successfully!")
 
-        self._draw_circle(x, y, str(node.val))
+    def load_tree_from_file(self):
+        file_path = askopenfilename(filetypes=[("Text files", "*.txt")])
+        if not file_path:
+            return
+        with open(file_path, "r") as f:
+            arr = list(map(int, f.read().strip().split()))
+        self.root = self.array_to_tree(arr)
+        self.draw_tree(self.root)
+        if self.sidebar:
+            self.sidebar.array = arr
+            self.sidebar.update_array_display(arr)
 
-        if node.left is not None:
-            self._draw_line(x, y, x - dx, y + self.level_height)
-            self._draw_node(node.left, x - dx, y + self.level_height, dx / 2, level + 1)
-        if node.right is not None:
-            self._draw_line(x, y, x + dx, y + self.level_height)
-            self._draw_node(node.right, x + dx, y + self.level_height, dx / 2, level + 1)
-
-    def add_random_node(self, probability=3):
-        """
-        Add a random node based on the given probability.
-        If a random number (0-9) is less than the probability, create two child nodes.
-        Otherwise, create only a left child node.
-        """
-        random_value = random.randint(0, 9)
-        if random_value < probability:
-            self.create_two_child_nodes()
-        else:
-            self.create_left_child_node()
-
-    def create_two_child_nodes(self):
-        # Logic to create two child nodes
-        print("Created two child nodes")
-
-    def create_left_child_node(self):
-        # Logic to create only a left child node
-        print("Created left child node")
-
-    def create_random_tree(self, probability=3, max_depth=5):
-        """
-        Create a random binary tree based on the given probability.
-        If a random number (0-9) is less than the probability, create two child nodes.
-        Otherwise, create only a left child node.
-        """
-        def add_nodes(node, depth):
-            if depth >= max_depth:
-                return
-            random_value = random.randint(0, 9)
-            if random_value < probability:
-                # Create two child nodes
-                left_child = self.create_node(parent=node, position="left")
-                right_child = self.create_node(parent=node, position="right")
-                add_nodes(left_child, depth + 1)
-                add_nodes(right_child, depth + 1)
-            else:
-                # Create only a left child node
-                left_child = self.create_node(parent=node, position="left")
-                add_nodes(left_child, depth + 1)
-
-        # Start with the root node
-        root = self.create_node(value="Root")
-        add_nodes(root, depth=0)
-
-    def create_node(self, parent=None, position=None, value=None):
-        """
-        Create a single node in the binary tree.
-        This is a placeholder method and should be implemented with actual logic.
-        """
-        print(f"Created node with value: {value}, parent: {parent}, position: {position}")
-        # Replace this with actual node creation logic
-        return {"value": value, "parent": parent, "position": position}
-
+def array_to_tree(self, arr):
+    # Chuyển mảng level-order (có thể có số 0 đại diện cho None) thành cây nhị phân
+    if not arr or arr[0] == 0:
+        return None
+    nodes = []
+    for val in arr:
+        nodes.append(TreeNode(val) if val != 0 else None)
+    kids = nodes[::-1]
+    root = kids.pop()
+    for node in nodes:
+        if node:
+            if kids: node.left = kids.pop()
+            if kids: node.right = kids.pop()
+    return root

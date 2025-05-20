@@ -8,7 +8,7 @@ from components.traversal_bar import TraversalBar
 if __name__ == "__main__":
     root = tk.Tk()
     root.geometry("1200x700")
-    root.title("TreeSim")
+    root.title("Tree Management")
 
     # Header on top
     header = Header(root, on_menu_click=lambda name: print(f"Chuyển đến {name}"))
