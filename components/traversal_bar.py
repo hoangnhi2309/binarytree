@@ -1,7 +1,5 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-import threading
-import time
 
 class TraversalBar(tk.Frame):
     def __init__(self, parent, visualizer, tree_getter):
@@ -9,35 +7,37 @@ class TraversalBar(tk.Frame):
         self.visualizer = visualizer
         self.tree_getter = tree_getter
         self.parent = parent
-        self.pack(side="bottom", fill="x", padx=2, pady=(0, 2))
+        self.pack(side="bottom", fill="x")
 
         self.traversal_nodes = []
         self.traversal_index = 0
         self.traversing = False
         self.paused = False
-        self.traversal_thread = None
         self.traversal_mode = "bfs"
-        self.popup = None
+        self.result_popup = None
+        self.option_popup = None
 
-        self.grid_columnconfigure(5, weight=1)
+        self.grid_columnconfigure(4, weight=1)
 
-        self.start_btn = self.create_button("Traversal", self.show_traversal_options, 0)
+        # Buttons
+        self.traversal_btn = self.create_button("Traversal", self.show_option_popup, 0)
         self.pause_btn = self.create_button("Pause", self.toggle_pause_resume, 1)
         self.next_btn = self.create_button("Next", self.next_step, 2)
         self.stop_btn = self.create_button("Stop", self.stop_traversal, 3)
 
+        # Progress bar (chiếm phần còn lại)
         self.progress_var = tk.DoubleVar(value=0)
         self.progress_bar = ttk.Progressbar(self, variable=self.progress_var, maximum=100)
-        self.progress_bar.grid(row=0, column=4, padx=10, sticky="we", columnspan=2)
+        self.progress_bar.grid(row=0, column=4, sticky="we", padx=(10, 5))
 
-        self.node_label = tk.Label(self, text="Node: -", font=("Arial", 12), bg="grey", fg="black")
-        self.node_label.grid(row=0, column=6, padx=(10, 2))
+        self.node_label = tk.Label(self, text="Node: -", font=("Arial", 12), bg="grey")
+        self.node_label.grid(row=0, column=5, padx=5)
 
-        tk.Label(self, text="Speed:", font=("Arial", 12), bg="grey", fg="black").grid(row=0, column=7, padx=(10, 2))
+        tk.Label(self, text="Speed:", bg="grey", font=("Arial", 12)).grid(row=0, column=6, padx=(10, 0))
         self.speed_var = tk.DoubleVar(value=1.0)
         self.speed_scale = tk.Scale(self, from_=0.1, to=2.0, resolution=0.1,
                                     orient="horizontal", variable=self.speed_var, length=100)
-        self.speed_scale.grid(row=0, column=8, padx=(0, 10))
+        self.speed_scale.grid(row=0, column=7, padx=(0, 10))
 
     def create_button(self, text, command, col):
         btn = tk.Label(self, text=text, font=("Arial", 12), bg="white", fg="black",
@@ -48,111 +48,165 @@ class TraversalBar(tk.Frame):
         btn.bind("<Button-1>", lambda e: command())
         return btn
 
-    def show_traversal_options(self):
+    def show_option_popup(self):
         if not self.tree_getter():
             messagebox.showwarning("Warning", "Please create or load a tree first.")
             return
 
-        if self.popup:
-            try:
-                if not self.popup.winfo_exists():
-                    self.popup = None
-                else:
-                    return
-            except:
-                self.popup = None
+        self.hide_result_popup()
 
-        self.popup = tk.Toplevel(self)
-        self.popup.overrideredirect(True)
-        self.popup.attributes("-topmost", True)
-        self.popup.config(bg="#f0f0f0")
-        self.popup.protocol("WM_DELETE_WINDOW", self.clear_popup_and_destroy)
+        if self.option_popup and self.option_popup.winfo_exists():
+            return
 
+        self.option_popup = tk.Toplevel(self)
+        self.option_popup.overrideredirect(True)
+        self.option_popup.attributes("-topmost", True)
+        self.option_popup.config(bg="#f9f9f9", bd=1, highlightthickness=1, highlightbackground="#ccc")
+
+        # Lấy kích thước và vị trí nút Traversal
         self.update_idletasks()
-        width = self.winfo_width()
-        height = 210
-        x = self.winfo_rootx()
-        final_y = self.winfo_rooty() - height
-        start_y = self.winfo_rooty() + self.winfo_height()
-        self.popup.geometry(f"{width}x{height}+{x}+{start_y}")
+        btn_x = self.traversal_btn.winfo_rootx()
+        btn_y = self.traversal_btn.winfo_rooty()
+        btn_width = self.traversal_btn.winfo_width()
+        popup_width = btn_width
+        popup_height = 160
 
-        close_btn = tk.Label(self.popup, text="✖", font=("Arial", 12, "bold"),
-                             bg="#f0f0f0", fg="black", cursor="hand2")
-        close_btn.place(relx=1.0, x=-10, y=10, anchor="ne")
-        close_btn.bind("<Enter>", lambda e: close_btn.config(bg="#e0e0e0"))
-        close_btn.bind("<Leave>", lambda e: close_btn.config(bg="#f0f0f0"))
-        close_btn.bind("<Button-1>", lambda e: self.clear_popup_and_destroy())
+        # Đặt popup ngay trên nút Traversal
+        self.option_popup.geometry(f"{popup_width}x{popup_height}+{btn_x}+{btn_y - popup_height - 5}")
 
-        button_frame = tk.Frame(self.popup, bg="#f0f0f0")
-        button_frame.pack(pady=(20, 5), fill="x", expand=True)
+        # Frame chứa các lựa chọn
+        frame = tk.Frame(self.option_popup, bg="#f9f9f9")
+        frame.pack(fill="both", expand=True, pady=5)
 
-        def create_option_button(label, mode):
-            btn = tk.Label(button_frame, text=label, font=("Arial", 14), bg="#4CAF50", fg="white",
-                           padx=20, pady=10, cursor="hand2", width=15)
-            btn.pack(side="left", expand=True, padx=10, fill="x")
-            btn.bind("<Enter>", lambda e: btn.config(bg="#45a049"))
-            btn.bind("<Leave>", lambda e: btn.config(bg="#4CAF50"))
-            btn.bind("<Button-1>", lambda e: [self.set_traversal_mode_and_start(mode)])
-            return btn
+        options = [("Preorder", "preorder"), ("Inorder", "inorder"),
+                ("Postorder", "postorder"), ("BFS", "bfs")]
 
-        create_option_button("Preorder", "preorder")
-        create_option_button("Inorder", "inorder")
-        create_option_button("Postorder", "postorder")
+        for label, mode in options:
+            btn = tk.Label(frame, text=label, font=("Arial", 11), bg="white", fg="black",
+                        relief="solid", bd=1, padx=4, pady=6, width=popup_width//10, cursor="hand2")
+            btn.pack(fill="x", padx=5, pady=2)
+            btn.bind("<Enter>", lambda e, b=btn: b.config(bg="#e0e0e0"))
+            btn.bind("<Leave>", lambda e, b=btn: b.config(bg="white"))
+            btn.bind("<Button-1>", lambda e, m=mode: self.set_mode_and_start(m))
 
-        text_frame = tk.Frame(self.popup, bg="#f0f0f0")
-        text_frame.pack(fill="both", expand=True, padx=15, pady=(0, 10))
 
-        self.output_display = tk.Text(text_frame, height=3, font=("Arial", 12), bg="#ffffff",
-                                      wrap="word", relief="solid")
-        self.output_display.pack(side="left", fill="both", expand=True)
-        scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=self.output_display.yview)
-        scrollbar.pack(side="right", fill="y")
-        self.output_display.config(yscrollcommand=scrollbar.set)
-        self.output_display.insert("1.0", "Traversal result: ")
-        self.output_display.config(state="disabled")
 
-        def animate_slide(current_y):
-            if current_y <= final_y:
-                self.popup.geometry(f"{width}x{height}+{x}+{final_y}")
-                return
-            self.popup.geometry(f"{width}x{height}+{x}+{current_y}")
-            self.popup.after(10, lambda: animate_slide(current_y - 10))
 
-        animate_slide(start_y)
 
-    def clear_popup_and_destroy(self):
-        try:
-            if self.popup and self.popup.winfo_exists():
-                self.popup.destroy()
-        except:
-            pass
-        self.popup = None
-
-    def set_traversal_mode_and_start(self, mode):
+    def set_mode_and_start(self, mode):
         self.traversal_mode = mode
+        if self.option_popup and self.option_popup.winfo_exists():
+            self.option_popup.destroy()
+        self.option_popup = None
         self.start_traversal()
+
     def start_traversal(self):
         root = self.tree_getter()
         if not root:
             return
 
-        if self.traversal_mode == "preorder":
-            self.traversal_nodes = self.get_preorder_list(root)
-        elif self.traversal_mode == "inorder":
-            self.traversal_nodes = self.get_inorder_list(root)
-        elif self.traversal_mode == "postorder":
-            self.traversal_nodes = self.get_postorder_list(root)
-        else:
-            self.traversal_nodes = self.get_bfs_list(root)
+        self.traversal_nodes = {
+            "preorder": self.get_preorder_list,
+            "inorder": self.get_inorder_list,
+            "postorder": self.get_postorder_list,
+            "bfs": self.get_bfs_list,
+        }.get(self.traversal_mode, self.get_bfs_list)(root)
 
         self.traversal_index = 0
         self.traversing = True
         self.paused = False
         self.pause_btn.config(text="Pause")
 
-        if not self.traversal_thread or not self.traversal_thread.is_alive():
-            self.traversal_thread = threading.Thread(target=self.run_traversal)
-            self.traversal_thread.start()
+        self.show_result_popup()
+        self._traversal_step()
+
+    def show_result_popup(self):
+        if self.result_popup and self.result_popup.winfo_exists():
+            self.result_popup.destroy()
+
+        self.result_popup = tk.Toplevel(self)
+        self.result_popup.overrideredirect(True)
+        self.result_popup.config(bg="white")
+        self.result_popup.attributes("-topmost", True)
+
+        width = self.winfo_width()
+        height = 60  # cao hơn tí cho đủ tag in đậm
+        x = self.winfo_rootx()
+        y = self.winfo_rooty() - height - 1
+        self.result_popup.geometry(f"{width}x{height}+{x}+{y}")
+
+        container = tk.Frame(self.result_popup, bg="white")
+        container.pack(fill="both", expand=True)
+
+        # Nút đóng X
+        close_btn = tk.Label(container, text="✖", font=("Arial", 12, "bold"),
+                            bg="white", fg="black", cursor="hand2")
+        close_btn.pack(side="right", anchor="ne", padx=10, pady=5)
+        close_btn.bind("<Enter>", lambda e: close_btn.config(bg="#e0e0e0"))
+        close_btn.bind("<Leave>", lambda e: close_btn.config(bg="white"))
+        close_btn.bind("<Button-1>", lambda e: self.result_popup.destroy())
+
+        # Khung text
+        self.output_display = tk.Text(container, height=2, font=("Arial", 12),
+                                    bg="white", wrap="word", relief="flat", bd=0)
+        self.output_display.pack(side="left", fill="both", expand=True, padx=(10, 0), pady=5)
+        self.output_display.insert("1.0", "Traversal result: ")
+        self.output_display.config(state="disabled")
+
+
+
+    def hide_result_popup(self):
+        if self.result_popup and self.result_popup.winfo_exists():
+            self.result_popup.destroy()
+            self.result_popup = None
+
+    def update_result_display(self):
+        if not self.result_popup or not hasattr(self, 'output_display'):
+            return
+
+        self.output_display.config(state="normal")
+        self.output_display.delete("1.0", tk.END)
+        self.output_display.insert("1.0", "Traversal result: ")
+
+        base_len = len("Traversal result: ")
+        for i, node in enumerate(self.traversal_nodes[:self.traversal_index]):
+            node_str = str(node.val)
+            self.output_display.insert(tk.END, node_str)
+
+            if i == self.traversal_index - 1:
+                start = base_len
+                end = start + len(node_str)
+                self.output_display.tag_add("bold", f"1.{start}", f"1.{end}")
+                self.output_display.tag_config("bold", font=("Arial", 12, "bold"))
+
+            base_len += len(node_str)
+            if i < self.traversal_index - 1:
+                self.output_display.insert(tk.END, " -> ")
+                base_len += 4
+
+        self.output_display.config(state="disabled")
+
+
+
+
+
+    def _traversal_step(self):
+        if not self.traversing or self.traversal_index >= len(self.traversal_nodes):
+            self.traversing = False
+            self.pause_btn.config(text="Pause")
+            return
+
+        if not self.paused:
+            node = self.traversal_nodes[self.traversal_index]
+            self.visualizer.highlighted_node = node
+            self.visualizer.draw_tree(self.tree_getter())
+            self.node_label.config(text=f"Node: {node.val}")
+            self.traversal_index += 1
+            self.progress_var.set((self.traversal_index / len(self.traversal_nodes)) * 100)
+            self.update_result_display()
+
+        delay = int(1000 / self.speed_var.get())
+        self.after(delay, self._traversal_step)
 
     def toggle_pause_resume(self):
         if self.traversing:
@@ -167,61 +221,18 @@ class TraversalBar(tk.Frame):
         self.node_label.config(text="Node: -")
         self.progress_var.set(0)
         self.pause_btn.config(text="Pause")
-        self.update_output_display(-1)
+        self.hide_result_popup()
 
     def next_step(self):
         if not self.traversal_nodes or self.traversal_index >= len(self.traversal_nodes):
             return
         node = self.traversal_nodes[self.traversal_index]
         self.visualizer.highlighted_node = node
-        self.visualizer.scroll_to_node(node)
-
-        self.visualizer.update_highlight()
+        self.visualizer.draw_tree(self.tree_getter())
         self.node_label.config(text=f"Node: {node.val}")
         self.traversal_index += 1
-        self.update_output_display(self.traversal_index - 1)
         self.progress_var.set((self.traversal_index / len(self.traversal_nodes)) * 100)
-
-
-    def update_output_display(self, highlight_index):
-        if not self.popup or not hasattr(self, 'output_display'):
-            return
-
-        self.output_display.config(state="normal")
-        self.output_display.delete("1.0", tk.END)
-        self.output_display.insert("1.0", "Traversal result: ")
-
-        for i, node in enumerate(self.traversal_nodes[:self.traversal_index]):
-            self.output_display.insert(tk.END, f"{node.val}")
-            if i < self.traversal_index - 1:
-                self.output_display.insert(tk.END, " -> ")
-
-        # In đậm node hiện tại
-        if highlight_index >= 0 and highlight_index < len(self.traversal_nodes):
-            start = len("Traversal result: ") + sum(len(str(n.val)) + 4 for n in self.traversal_nodes[:highlight_index])
-            end = start + len(str(self.traversal_nodes[highlight_index].val))
-            self.output_display.tag_add("bold", f"1.{start}", f"1.{end}")
-            self.output_display.tag_config("bold", font=("Arial", 12, "bold"))
-
-        self.output_display.see("end")
-        self.output_display.config(state="disabled")
-
-    def run_traversal(self):
-        while self.traversing and self.traversal_index < len(self.traversal_nodes):
-            if not self.paused:
-                node = self.traversal_nodes[self.traversal_index]
-                self.visualizer.highlighted_node = node
-                self.visualizer.draw_tree(self.tree_getter())
-                self.node_label.config(text=f"Node: {node.val}")
-                self.traversal_index += 1
-                self.update_output_display(self.traversal_index - 1)
-                self.progress_var.set((self.traversal_index / len(self.traversal_nodes)) * 100)
-                time.sleep(1.0 / self.speed_var.get())
-            else:
-                time.sleep(0.1)
-
-
-
+        self.update_result_display()
 
     def get_bfs_list(self, root):
         result = []
@@ -235,16 +246,16 @@ class TraversalBar(tk.Frame):
         return result
 
     def get_preorder_list(self, root):
-        if root is None:
+        if not root:
             return []
         return [root] + self.get_preorder_list(root.left) + self.get_preorder_list(root.right)
 
     def get_inorder_list(self, root):
-        if root is None:
+        if not root:
             return []
         return self.get_inorder_list(root.left) + [root] + self.get_inorder_list(root.right)
 
     def get_postorder_list(self, root):
-        if root is None:
+        if not root:
             return []
         return self.get_postorder_list(root.left) + self.get_postorder_list(root.right) + [root]
