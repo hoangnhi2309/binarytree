@@ -155,13 +155,6 @@ class TraversalBar(tk.Frame):
 
 
 
-
-
-
-
-
-
-
     def hide_result_popup(self):
         if self.result_popup and self.result_popup.winfo_exists():
             self.result_popup.destroy()
