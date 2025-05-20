@@ -1,7 +1,5 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-import threading
-import time
 
 class TraversalBar(tk.Frame):
     def __init__(self, parent, visualizer, tree_getter):
@@ -15,7 +13,6 @@ class TraversalBar(tk.Frame):
         self.traversal_index = 0
         self.traversing = False
         self.paused = False
-        self.traversal_thread = None
         self.traversal_mode = "bfs"
         self.popup = None
 
@@ -92,7 +89,7 @@ class TraversalBar(tk.Frame):
             btn.pack(side="left", expand=True, padx=10, fill="x")
             btn.bind("<Enter>", lambda e: btn.config(bg="#45a049"))
             btn.bind("<Leave>", lambda e: btn.config(bg="#4CAF50"))
-            btn.bind("<Button-1>", lambda e: [self.set_traversal_mode_and_start(mode)])
+            btn.bind("<Button-1>", lambda e: [self.set_traversal_mode_and_start(mode), self.clear_popup_and_destroy()])
             return btn
 
         create_option_button("Preorder", "preorder")
@@ -131,6 +128,7 @@ class TraversalBar(tk.Frame):
     def set_traversal_mode_and_start(self, mode):
         self.traversal_mode = mode
         self.start_traversal()
+
     def start_traversal(self):
         root = self.tree_getter()
         if not root:
@@ -150,9 +148,25 @@ class TraversalBar(tk.Frame):
         self.paused = False
         self.pause_btn.config(text="Pause")
 
-        if not self.traversal_thread or not self.traversal_thread.is_alive():
-            self.traversal_thread = threading.Thread(target=self.run_traversal)
-            self.traversal_thread.start()
+        self._traversal_step()  # Bắt đầu duyệt
+
+    def _traversal_step(self):
+        if not self.traversing or self.traversal_index >= len(self.traversal_nodes):
+            self.traversing = False
+            self.pause_btn.config(text="Pause")
+            return
+
+        if not self.paused:
+            node = self.traversal_nodes[self.traversal_index]
+            self.visualizer.highlighted_node = node
+            self.visualizer.draw_tree(self.tree_getter())
+            self.node_label.config(text=f"Node: {node.val}")
+            self.update_output_display(self.traversal_index)
+            self.progress_var.set((self.traversal_index + 1) / len(self.traversal_nodes) * 100)
+            self.traversal_index += 1
+
+        delay = int(1000 / self.speed_var.get())  # Tốc độ traversal, đơn vị ms
+        self.after(delay, self._traversal_step)
 
     def toggle_pause_resume(self):
         if self.traversing:
@@ -176,12 +190,11 @@ class TraversalBar(tk.Frame):
         self.visualizer.highlighted_node = node
         self.visualizer.scroll_to_node(node)
 
-        self.visualizer.update_highlight()
+        self.visualizer.draw_tree(self.tree_getter())
         self.node_label.config(text=f"Node: {node.val}")
         self.traversal_index += 1
         self.update_output_display(self.traversal_index - 1)
         self.progress_var.set((self.traversal_index / len(self.traversal_nodes)) * 100)
-
 
     def update_output_display(self, highlight_index):
         if not self.popup or not hasattr(self, 'output_display'):
@@ -197,7 +210,7 @@ class TraversalBar(tk.Frame):
                 self.output_display.insert(tk.END, " -> ")
 
         # In đậm node hiện tại
-        if highlight_index >= 0 and highlight_index < len(self.traversal_nodes):
+        if 0 <= highlight_index < len(self.traversal_nodes):
             start = len("Traversal result: ") + sum(len(str(n.val)) + 4 for n in self.traversal_nodes[:highlight_index])
             end = start + len(str(self.traversal_nodes[highlight_index].val))
             self.output_display.tag_add("bold", f"1.{start}", f"1.{end}")
@@ -205,23 +218,6 @@ class TraversalBar(tk.Frame):
 
         self.output_display.see("end")
         self.output_display.config(state="disabled")
-
-    def run_traversal(self):
-        while self.traversing and self.traversal_index < len(self.traversal_nodes):
-            if not self.paused:
-                node = self.traversal_nodes[self.traversal_index]
-                self.visualizer.highlighted_node = node
-                self.visualizer.draw_tree(self.tree_getter())
-                self.node_label.config(text=f"Node: {node.val}")
-                self.traversal_index += 1
-                self.update_output_display(self.traversal_index - 1)
-                self.progress_var.set((self.traversal_index / len(self.traversal_nodes)) * 100)
-                time.sleep(1.0 / self.speed_var.get())
-            else:
-                time.sleep(0.1)
-
-
-
 
     def get_bfs_list(self, root):
         result = []
@@ -242,9 +238,10 @@ class TraversalBar(tk.Frame):
     def get_inorder_list(self, root):
         if root is None:
             return []
-        return self.get_inorder_list(root.left) + [root] + self.get_inorder_list(root.right)
-
+        return self.get_inorder_list(root.left
+                ) + [root] + self.get_inorder_list(root.right)
     def get_postorder_list(self, root):
         if root is None:
             return []
         return self.get_postorder_list(root.left) + self.get_postorder_list(root.right) + [root]
+
