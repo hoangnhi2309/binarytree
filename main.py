@@ -60,6 +60,8 @@ if __name__ == "__main__":
 
     # Traversal bar (fixed below canvas)
     traversal_bar = TraversalBar(right_frame, visualizer, tree_getter=lambda: sidebar.tree_root)
+    traversal_bar.pack(side="bottom", fill="x")
+
     visualizer.set_controller(traversal_bar)
 
     root.mainloop()
