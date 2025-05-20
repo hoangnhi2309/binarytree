@@ -1,4 +1,3 @@
-# === main.py ===
 import tkinter as tk
 from components.header import Header
 from components.sidebar import Sidebar
@@ -14,12 +13,27 @@ visualizers = {
     "AVL Tree": AVLVisualizer
 }
 
-def setup_visualizer(VisualizerClass, sidebar, right_frame):
-    # Xóa các widget cũ trong right_frame (nếu có)
-    for widget in right_frame.winfo_children():
-        widget.destroy()
+if __name__ == "__main__":
+    root = tk.Tk()
+    root.geometry("1200x700")
+    root.title("Tree Management")
 
-    # === Canvas Scroll Wrapper ===
+    # 1. Tạo header trước để nó nằm trên cùng
+    header = Header(root, None, None)
+    header.pack(side="top", fill="x")
+
+    # 2. Main content dưới header
+    main_frame = tk.Frame(root, bg="grey")
+    main_frame.pack(fill="both", expand=True)
+
+    # 3. Sidebar bên trái
+    sidebar = Sidebar(main_frame)
+    sidebar.pack(side="left", fill="y")
+
+    # 4. Right side (canvas + traversal)
+    right_frame = tk.Frame(main_frame, bg="lightgrey")
+    right_frame.pack(side="left", fill="both", expand=True)
+
     canvas_frame = tk.Frame(right_frame, bg="lightgrey")
     canvas_frame.pack(fill="both", expand=True)
 
@@ -27,56 +41,63 @@ def setup_visualizer(VisualizerClass, sidebar, right_frame):
     x_scroll.pack(side="bottom", fill="x")
     y_scroll = tk.Scrollbar(canvas_frame, orient="vertical")
     y_scroll.pack(side="right", fill="y")
+
     canvas = tk.Canvas(canvas_frame, bg="lightgrey",
                        xscrollcommand=x_scroll.set, yscrollcommand=y_scroll.set)
     canvas.pack(fill="both", expand=True)
     x_scroll.config(command=canvas.xview)
     y_scroll.config(command=canvas.yview)
 
-    # Visualizer
-    visualizer = VisualizerClass(canvas)
-    visualizer.bind_click_event()
-    sidebar.visualizer = visualizer
-    if hasattr(visualizer, "controller"):
-        sidebar.controller = visualizer.controller
-    visualizer.sidebar = sidebar
+    # 5. Biến toàn cục
+    current_visualizer = None
+    traversal_bar = None
 
-    # Traversal bar (fixed below canvas)
-    traversal_bar = TraversalBar(right_frame, visualizer, tree_getter=lambda: sidebar.tree_root)
-    traversal_bar.pack(side="bottom", fill="x")
-    visualizer.set_controller(traversal_bar)
-    return visualizer
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.geometry("1200x700")
-    root.title("Tree Management")
-
-    # Header on top
+    # 6. Hàm xử lý khi click menu
     def on_menu_click(name):
-        header.set_active(name)
-        VisualizerClass = visualizers[name]
-        global visualizer
-        visualizer = setup_visualizer(VisualizerClass, sidebar, right_frame)
-        sidebar.set_visualizer(visualizer)
+        global current_visualizer, traversal_bar
 
-    header = Header(root, on_menu_click=on_menu_click)
+        header.set_active(name)
+ # Xóa visualizer cũ nếu có
+        if current_visualizer:
+            current_visualizer.clear_canvas()   # Xóa canvas cũ
+            current_visualizer.destroy()
+            current_visualizer = None
+
+        if traversal_bar:
+            traversal_bar.destroy()
+            traversal_bar = None
+
+        # Xóa dữ liệu cây trong sidebar
+        sidebar.tree_root = None
+        sidebar.array = []
+        sidebar.update_array_display()  # Hoặc clear widget hiển thị mảng
+
+        VisualizerClass = visualizers.get(name, BinaryTreeVisualizer)
+        current_visualizer = VisualizerClass(canvas)
+        current_visualizer.bind_click_event()
+
+        sidebar.visualizer = current_visualizer
+        sidebar.controller = current_visualizer.controller
+        current_visualizer.sidebar = sidebar
+
+        traversal_bar = TraversalBar(right_frame, current_visualizer, tree_getter=lambda: sidebar.tree_root)
+        traversal_bar.pack(side="bottom", fill="x")
+        current_visualizer.set_controller(traversal_bar)
+
+    # 7. Gán lại sidebar + callback cho header
+    header.sidebar = sidebar
+    header.on_menu_click = on_menu_click
     header.set_active("Binary Tree")
 
-    # Main frame contains sidebar + right side
-    main_frame = tk.Frame(root, bg="grey")
-    main_frame.pack(fill="both", expand=True)
+    # 8. Visualizer mặc định
+    current_visualizer = BinaryTreeVisualizer(canvas)
+    current_visualizer.bind_click_event()
+    sidebar.visualizer = current_visualizer
+    sidebar.controller = current_visualizer.controller
+    current_visualizer.sidebar = sidebar
 
-    # Sidebar
-    sidebar = Sidebar(main_frame)
-    sidebar.pack(side="left", fill="y")
-
-    # Right frame
-    right_frame = tk.Frame(main_frame, bg="lightgrey")
-    right_frame.pack(side="left", fill="both", expand=True)
-
-    # Khởi tạo mặc định là Binary Tree
-    visualizer = setup_visualizer(BinaryTreeVisualizer, sidebar, right_frame)
-    sidebar.set_visualizer(visualizer)
+    traversal_bar = TraversalBar(right_frame, current_visualizer, tree_getter=lambda: sidebar.tree_root)
+    traversal_bar.pack(side="bottom", fill="x")
+    current_visualizer.set_controller(traversal_bar)
 
     root.mainloop()

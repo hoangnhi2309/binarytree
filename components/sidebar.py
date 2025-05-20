@@ -22,6 +22,8 @@ class Sidebar(tk.Frame):
         super().__init__(parent, bg="grey", width=400)
         self.master = parent
         self.show_status = show_status 
+        self.tree_root = None  # Khởi tạo root tree
+        self.array = []
         self.visualizer = BinaryTreeVisualizer(self)
         self.controller = Controller(self.visualizer, self)
         self.visualizer.controller = self.controller
@@ -84,6 +86,29 @@ class Sidebar(tk.Frame):
         self.create_modern_button("Save to file", self.save_tree_to_file)
         self.create_modern_button("Load from file", self.load_tree_from_file)
     
+
+    def reset_state(self):
+        # Xóa dữ liệu cây, mảng, thông tin...
+        self.tree_root = None
+        self.array = []
+        # Xóa nội dung trong Text widget array_display
+        self.array_display.config(state="normal")
+        self.array_display.delete("1.0", tk.END)
+        self.array_display.config(state="disabled")
+
+    def clear_tree(self):
+        # Xóa cây trong bộ nhớ
+        self.tree_root = None
+
+        # Xóa dữ liệu hiển thị mảng (nếu chưa xóa)
+        self.array = []
+        self.update_array_display()  # hàm bạn dùng để cập nhật mảng trong giao diện
+
+        # Xóa canvas vẽ cây (phải có hàm clear_canvas trong Visualizer)
+        if self.visualizer:
+            self.visualizer.clear_canvas()
+
+
     def format_array_multiline(self, array):
         lines = []
         for i, val in enumerate(array):
@@ -619,12 +644,4 @@ class Sidebar(tk.Frame):
         self.update_array_display(self.array)
 
         self.show_toast_notification("Đã cập nhật lại cây từ bảng.")
-
-    def set_visualizer(self, visualizer):
-        self.visualizer = visualizer
-        # Đổi tên nút nếu là BST
-        if visualizer.__class__.__name__ == "BSTVisualizer":
-            self.create_random_tree_btn.config(text="Create tree")
-        else:
-            self.create_random_tree_btn.config(text="Create random tree")
 

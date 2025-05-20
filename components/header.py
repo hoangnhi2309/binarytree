@@ -8,10 +8,10 @@ from tkinter.filedialog import asksaveasfilename
 from PIL import Image, ImageTk
 import os
 class Header(tk.Frame):
-    def __init__(self, parent, on_menu_click):
+    def __init__(self, parent, sidebar, on_menu_click):
         super().__init__(parent, bg="#b0b0b0")
         self.pack(fill='x')
-
+        self.sidebar = sidebar
         self.on_menu_click = on_menu_click
         self.menu_buttons = {}
 
@@ -37,6 +37,7 @@ class Header(tk.Frame):
 
     def menu_clicked(self, name):
         self.set_active(name)
+        self.sidebar.reset_state()        # ✅ reset khi chuyển tab
         self.on_menu_click(name)
 
     def set_active(self, active_name):
@@ -45,3 +46,9 @@ class Header(tk.Frame):
                 btn.config(fg="#164933", font=("Arial", 20, "bold", "underline"))
             else:
                 btn.config(fg="black", font=("Arial", 20, "bold"))
+    def set_active_tab(self, tab):
+        self.active_tab = tab
+        self.update_tab_styles()
+        self.sidebar.reset_state()  # Reset giao diện mỗi khi chuyển tab
+
+
