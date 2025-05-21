@@ -162,6 +162,16 @@ class BinaryTreeVisualizer:
         popup.geometry("300x130")
         popup.transient(self.canvas.winfo_toplevel())
 
+        # Center the popup
+        popup.update_idletasks()
+        screen_width = popup.winfo_screenwidth()
+        screen_height = popup.winfo_screenheight()
+        popup_width = popup.winfo_width()
+        popup_height = popup.winfo_height()
+        x = (screen_width // 2) - (popup_width // 2)
+        y = (screen_height // 2) - (popup_height // 2)
+        popup.geometry(f"+{x}+{y}")
+
         # Label New Value (căn trái)
         tk.Label(popup, text="New Value:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(15, 2))
 
@@ -260,6 +270,16 @@ class BinaryTreeVisualizer:
         popup.geometry("300x130")
         popup.transient(self.canvas.winfo_toplevel())
 
+        # Center the popup
+        popup.update_idletasks()
+        screen_width = popup.winfo_screenwidth()
+        screen_height = popup.winfo_screenheight()
+        popup_width = popup.winfo_width()
+        popup_height = popup.winfo_height()
+        x = (screen_width // 2) - (popup_width // 2)
+        y = (screen_height // 2) - (popup_height // 2)
+        popup.geometry(f"+{x}+{y}")
+
         # Label căn trái
         tk.Label(popup, text="Enter value of the node to switch with:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(15, 2))
 
@@ -317,53 +337,157 @@ class BinaryTreeVisualizer:
             menu.grab_release()
     
     def on_random_tree(self):
-    # Popup nhập thông số random tree
-        popup = tk.Toplevel(self.canvas.winfo_toplevel())
-        popup.title("Create Random Tree")
-        popup.geometry("300x220")
-        popup.transient(self.canvas.winfo_toplevel())
+        self.popup = tk.Toplevel(self.canvas.winfo_toplevel())
+        self.popup.title("Create Random Tree")
+        self.popup.geometry("300x250")
+        self.popup.transient(self.canvas.winfo_toplevel())
 
-        tk.Label(popup, text="Min Value:", font=("Arial", 12)).pack(pady=(10, 2))
-        min_entry = tk.Entry(popup, font=("Arial", 12))
-        min_entry.insert(0, "1")
-        min_entry.pack(pady=(0, 10))
+        # Center the popup
+        self.popup.update_idletasks()
+        screen_width = self.popup.winfo_screenwidth()
+        screen_height = self.popup.winfo_screenheight()
+        popup_width = self.popup.winfo_width()
+        popup_height = self.popup.winfo_height()
+        x = (screen_width // 2) - (popup_width // 2)
+        y = (screen_height // 2) - (popup_height // 2)
+        self.popup.geometry(f"+{x}+{y}")
 
-        tk.Label(popup, text="Max Value:", font=("Arial", 12)).pack(pady=(0, 2))
-        max_entry = tk.Entry(popup, font=("Arial", 12))
-        max_entry.insert(0, "99")
-        max_entry.pack(pady=(0, 10))
+        # Min Value
+        tk.Label(self.popup, text="Min Value:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(10, 2))
+        self.min_entry = tk.Entry(self.popup, font=("Arial", 12))
+        self.min_entry.insert(0, "1")
+        self.min_entry.pack(fill="x", padx=10, pady=(0, 10))
 
-        tk.Label(popup, text="Tree Depth:", font=("Arial", 12)).pack(pady=(0, 2))
-        depth_entry = tk.Entry(popup, font=("Arial", 12))
-        depth_entry.insert(0, "4")
-        depth_entry.pack(pady=(0, 10))
+        # Max Value
+        tk.Label(self.popup, text="Max Value:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(0, 2))
+        self.max_entry = tk.Entry(self.popup, font=("Arial", 12))
+        self.max_entry.insert(0, "99")
+        self.max_entry.pack(fill="x", padx=10, pady=(0, 10))
 
-        def create_tree_and_close():
-            try:
-                min_val = int(min_entry.get())
-                max_val = int(max_entry.get())
-                depth = int(depth_entry.get())
-                self.root = self.create_random_tree(min_val, max_val, depth)
+        # Tree Depth
+        tk.Label(self.popup, text="Tree Depth:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(0, 2))
+        self.depth_entry = tk.Entry(self.popup, font=("Arial", 12))
+        self.depth_entry.pack(fill="x", padx=10, pady=(0, 10))
+        self.depth_entry.insert(0, "3")
+
+        # Frame chứa 2 nút Create và Cancel căn phải
+        button_frame = tk.Frame(self.popup)
+        button_frame.pack(pady=10, padx=10, fill="x")
+        tk.Label(button_frame).pack(side="left", expand=True)
+        create_button = tk.Button(button_frame, text="Create", command=self.create_tree_and_close, font=("Arial", 12), bg="grey")
+        create_button.pack(side="right", padx=(5, 0))
+        cancel_button = tk.Button(button_frame, text="Cancel", command=self.popup.destroy, font=("Arial", 12), bg="grey", fg="black")
+        cancel_button.pack(side="right", padx=(0, 5))
+        
+
+        self.min_entry.bind("<KeyRelease>", lambda e: self.update_max_depth_hint())
+        self.max_entry.bind("<KeyRelease>", lambda e: self.update_max_depth_hint())
+        self.update_max_depth_hint()
+
+    def create_tree_and_close(self):
+        try:
+            min_value = int(self.min_entry.get())
+            max_value = int(self.max_entry.get())
+            depth = int(self.depth_entry.get())
+
+            if min_value >= max_value:
+                messagebox.showwarning("Invalid Input", "Min value must be less than Max value.")
+                return
+            if depth <= 0:
+                messagebox.showwarning("Invalid Input", "Depth must be a positive integer.")
+                return
+
+            max_nodes = 2**depth - 1
+            available_values = max_value - min_value + 1
+
+            if max_nodes > available_values:
+                messagebox.showwarning(
+                    "Invalid Input",
+                    f"Not enough unique values to fill the tree.\n"
+                    f"Required: {max_nodes}, Available: {available_values}.\n"
+                    f"Increase the range (Min/Max) or reduce the depth."
+                )
+                return
+
+            arr = sorted(self.generate_random_tree_array(min_value, max_value, depth))
+            tree_root = self.build_random_tree(arr.copy(), 1, depth)
+
+            if tree_root:
+                self.root = tree_root
                 self.draw_tree(self.root)
                 if self.sidebar:
-                    arr = self.tree_to_array(self.root)
-                    self.sidebar.array = arr
-                    self.sidebar.update_array_display(arr)
-                popup.destroy()
-            except Exception as e:
-                messagebox.showwarning("Invalid Input", f"Error: {e}")
+                    new_array = self.tree_to_array(self.root)
+                    self.sidebar.array = new_array
+                    self.sidebar.update_array_display(new_array)
+            else:
+                messagebox.showwarning("Error", "Failed to create tree.")
 
-        tk.Button(popup, text="Create", command=create_tree_and_close, font=("Arial", 12)).pack(pady=10)
+            self.popup.destroy()
 
-    def create_random_tree(self, min_val, max_val, depth):
-        if depth <= 0:
+        except ValueError:
+            messagebox.showwarning("Invalid Input", "Please enter valid integers for Min, Max, and Depth.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+
+    def generate_random_tree_array(self, min_value, max_value, depth):
+        max_nodes = 2**depth - 1
+        all_values = list(range(min_value, max_value + 1))
+
+        if max_nodes > len(all_values):
+            # Không đủ giá trị duy nhất => cho phép trùng
+            array = [random.choice(all_values) for _ in range(max_nodes)]
+            if min_value not in array:
+                array[0] = min_value
+            if max_value not in array:
+                array[-1] = max_value
+            return array
+        else:
+            # Đủ giá trị => đảm bảo min và max có mặt
+            base_values = all_values.copy()
+            base_values.remove(min_value)
+            if max_value != min_value:  # tránh remove 2 lần nếu bằng nhau
+                base_values.remove(max_value)
+
+            sample = random.sample(base_values, max_nodes - 2)
+            sample += [min_value, max_value]
+            random.shuffle(sample)
+            return sample
+        
+    def build_random_tree(self, values, current_depth, max_depth):
+        if not values or current_depth > max_depth:
             return None
-        val = random.randint(min_val, max_val)
+
+        val = values.pop(random.randrange(len(values)))
         node = TreeNode(val)
-        if depth > 1:
-            node.left = self.create_random_tree(min_val, max_val, depth - 1)
-            node.right = self.create_random_tree(min_val, max_val, depth - 1)
+
+        force_create = current_depth < 2  # Ép phải có nhánh lúc đầu cho chắc kèo
+
+        # Random nhánh trái
+        if values and (force_create or random.random() < 0.7):
+            node.left = self.build_random_tree(values, current_depth + 1, max_depth)
+
+        # Random nhánh phải
+        if values and (force_create or random.random() < 0.7):
+            node.right = self.build_random_tree(values, current_depth + 1, max_depth)
+
         return node
+
+    def update_max_depth_hint(self):
+        try:
+            min_value = int(self.min_entry.get())
+            max_value = int(self.max_entry.get())
+            available_values = max_value - min_value + 1
+
+            # Tính độ sâu tối đa có thể
+            max_depth = 0
+            while (2**max_depth - 1) <= available_values:
+                max_depth += 1
+            max_depth -= 1
+
+            # Hiển thị gợi ý ra label (không ép người dùng)
+            self.depth_hint_label.config(text=f"Suggested max depth: {max_depth}")
+        except ValueError:
+            self.depth_hint_label.config(text="")
     
     def on_clear_tree(self):
         self.root = None
@@ -377,6 +501,16 @@ class BinaryTreeVisualizer:
         popup.title("Find Node")
         popup.geometry("300x150")
         popup.transient(self.canvas.winfo_toplevel())
+
+        # Center the popup
+        popup.update_idletasks()
+        screen_width = popup.winfo_screenwidth()
+        screen_height = popup.winfo_screenheight()
+        popup_width = popup.winfo_width()
+        popup_height = popup.winfo_height()
+        x = (screen_width // 2) - (popup_width // 2)
+        y = (screen_height // 2) - (popup_height // 2)
+        popup.geometry(f"+{x}+{y}")
 
         tk.Label(popup, text="Enter value to find:", font=("Arial", 12)).pack(pady=10)
         value_entry = tk.Entry(popup, font=("Arial", 12))
@@ -421,28 +555,34 @@ class BinaryTreeVisualizer:
             messagebox.showinfo("Save", "Tree saved successfully!")
 
     def load_tree_from_file(self):
-        file_path = askopenfilename(filetypes=[("Text files", "*.txt")])
+        file_path = askopenfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
         if not file_path:
             return
         with open(file_path, "r") as f:
-            arr = list(map(int, f.read().strip().split()))
-        self.root = self.array_to_tree(arr)
+            content = f.read().strip()
+            if not content:
+                messagebox.showwarning("Empty File", "The selected file is empty.")
+                return
+            arr = [int(x) for x in content.split()]
+        loaded_tree = self.array_to_tree(arr)
+        self.root = loaded_tree  # hoặc self.tree_root = loaded_tree
         self.draw_tree(self.root)
         if self.sidebar:
+            arr = self.tree_to_array(self.root)
             self.sidebar.array = arr
             self.sidebar.update_array_display(arr)
 
-def array_to_tree(self, arr):
-    # Chuyển mảng level-order (có thể có số 0 đại diện cho None) thành cây nhị phân
-    if not arr or arr[0] == 0:
-        return None
-    nodes = []
-    for val in arr:
-        nodes.append(TreeNode(val) if val != 0 else None)
-    kids = nodes[::-1]
-    root = kids.pop()
-    for node in nodes:
-        if node:
-            if kids: node.left = kids.pop()
-            if kids: node.right = kids.pop()
-    return root
+    def array_to_tree(self, arr):
+        if not arr:
+            return None
+        nodes = []
+        for val in arr:
+            node = TreeNode(val) if val != 0 else None
+            nodes.append(node)
+        kids = nodes[::-1]
+        root = kids.pop()
+        for node in nodes:
+            if node:
+                if kids: node.left = kids.pop()
+                if kids: node.right = kids.pop()
+        return root
