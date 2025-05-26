@@ -3,6 +3,7 @@ import tkinter.messagebox as messagebox
 from tkinter.filedialog import asksaveasfilename, askopenfilename
 import random
 import ast
+from tkinter import simpledialog
 
 class TreeNode:
     def __init__(self, value):
@@ -68,7 +69,8 @@ class BinaryTreeVisualizer:
         add_menu.add_command(label="Left side", command=lambda: self.add_child_node(node, "left"))
         add_menu.add_command(label="Right side", command=lambda: self.add_child_node(node, "right"))
         menu.add_cascade(label="Add Node", menu=add_menu)
-        menu.add_command(label="Switch Node", command=lambda: self.switch_node(node))
+        menu.add_command(label="Switch Node", command=lambda: self.switch_node(self.highlighted_node))
+
         try:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
@@ -194,12 +196,6 @@ class BinaryTreeVisualizer:
         save_button = tk.Button(button_frame, text="Edit", command=lambda: self.save_value(node, value_entry, popup), font=("Arial", 12), bg="grey")
         save_button.pack(side="right", padx=(5, 0))
 
-
-
-
-
-
-
     def save_value(self, node, value_entry, popup):
         try:
             new_value = int(value_entry.get())
@@ -213,7 +209,6 @@ class BinaryTreeVisualizer:
         except ValueError:
             messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
             
-
     def delete_node(self, node):
         def remove_node(parent, target):
             if parent.left == target:
@@ -242,31 +237,17 @@ class BinaryTreeVisualizer:
             self.sidebar.update_array_display(new_array)
 
     def add_child_node(self, node, direction):
-        new_value = random.randint(1, 100)
-        new_node = TreeNode(new_value)
+        # Kiểm tra node trái hoặc phải đã tồn tại chưa
+        if direction == "left" and node.left is not None:
+            messagebox.showwarning("Node Exists", "Left node already exists.")
+            return
+        if direction == "right" and node.right is not None:
+            messagebox.showwarning("Node Exists", "Right node already exists.")
+            return
 
-        if direction == "left":
-            if node.left is None:
-                node.left = new_node
-            else:
-                messagebox.showwarning("Node Exists", "Left node already exists.")
-                return
-        elif direction == "right":
-            if node.right is None:
-                node.right = new_node
-            else:
-                messagebox.showwarning("Node Exists", "Right node already exists.")
-                return
-
-        self.draw_tree(self.root)
-        if self.sidebar:
-            new_array = self.tree_to_array(self.root)
-            self.sidebar.array = new_array
-            self.sidebar.update_array_display(new_array)
-
-    def switch_node(self, node):
+        # Tạo popup nhập giá trị node mới (Toplevel)
         popup = tk.Toplevel(self.canvas)
-        popup.title("Switch Node")
+        popup.title(f"Add {direction.capitalize()} Child Node")
         popup.geometry("300x130")
         popup.transient(self.canvas.winfo_toplevel())
 
@@ -280,62 +261,97 @@ class BinaryTreeVisualizer:
         y = (screen_height // 2) - (popup_height // 2)
         popup.geometry(f"+{x}+{y}")
 
-        # Label căn trái
-        tk.Label(popup, text="Enter value of the node to switch with:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(15, 2))
+        # Label New Value (căn trái)
+        tk.Label(popup, text="New Value:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(15, 2))
 
-        # Entry căn chỉnh đẹp
+        # Entry New Value
         value_entry = tk.Entry(popup, font=("Arial", 12))
         value_entry.pack(fill="x", padx=10, pady=(0, 15))
 
-        # Frame chứa nút Switch và Cancel căn phải
+        # Frame chứa nút Cancel và Add (Save)
         button_frame = tk.Frame(popup)
         button_frame.pack(pady=10, padx=10, fill="x")
 
         # Spacer đẩy nút sang phải
         tk.Label(button_frame).pack(side="left", expand=True)
 
-        # Nút Switch
-        switch_button = tk.Button(button_frame, text="Switch", command=lambda: self.perform_switch(node, value_entry, popup), font=("Arial", 12), bg="grey")
-        switch_button.pack(side="right", padx=(5, 0))
-
         # Nút Cancel
         cancel_button = tk.Button(button_frame, text="Cancel", command=popup.destroy, font=("Arial", 12), bg="grey", fg="black")
         cancel_button.pack(side="right", padx=(0, 5))
 
-
-    def perform_switch(self, node, value_entry, popup):
-        try:
-            target_value = int(value_entry.get())
-            target_node = self.find_node_by_value(self.root, target_value)
-            if target_node is None:
-                messagebox.showwarning("Node Not Found", f"Node with value {target_value} not found.")
+        # Hàm xử lý khi bấm nút Add
+        def on_add():
+            val = value_entry.get()
+            try:
+                new_value = int(val)
+            except ValueError:
+                messagebox.showerror("Invalid Input", "Please enter a valid integer value.")
                 return
+            new_node = TreeNode(new_value)
+            if direction == "left":
+                node.left = new_node
+            else:  # direction == "right"
+                node.right = new_node
 
-            node.val, target_node.val = target_node.val, node.val
+            popup.destroy()  # Đóng popup
             self.draw_tree(self.root)
             if self.sidebar:
                 new_array = self.tree_to_array(self.root)
                 self.sidebar.array = new_array
                 self.sidebar.update_array_display(new_array)
-            popup.destroy()
-        except ValueError:
-            messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
+
+        # Nút Add
+        add_button = tk.Button(button_frame, text="Add", command=on_add, font=("Arial", 12), bg="grey")
+        add_button.pack(side="right", padx=(5, 0))
+
+
+
+    def switch_all_nodes_with_two_children(self):
+        def dfs(node):
+            if node is None:
+                return
+            # Nếu node có đủ cả trái và phải, thì hoán đổi
+            if node.left is not None and node.right is not None:
+                node.left, node.right = node.right, node.left
+            # Đệ quy tiếp các node con
+            dfs(node.left)
+            dfs(node.right)
+
+        if self.root is None:
+            self.show_toast_notification("The tree is empty.", bg_color="lightcoral")
+            return
+
+        dfs(self.root)  # Duyệt cây từ root
+
+        self.highlighted_node = None
+        self.switching_node = None
+        self.draw_tree(self.root)
+
+        if self.sidebar:
+            new_array = self.tree_to_array(self.root)
+            self.sidebar.array = new_array
+            self.sidebar.update_array_display(new_array)
+
+        self.show_toast_notification("Switched all nodes with two children successfully!", bg_color="lightgreen")
+
+
 
     def show_canvas_menu(self, event):
         menu = tk.Menu(self.canvas, tearoff=0)
-    # menu.add_command(label="Find node", command=self.load_tree)  # Xoá dòng này nếu không có hàm find node
         menu.add_command(label="Find node", command=self.on_find_node)
-        menu.add_command(label="Create random tree", command=self.on_random_tree)
+        menu.add_command(label="Create random tree", command=self.on_random_tree)  # GỌI HÀM CHUNG
         menu.add_command(label="Delete tree", command=self.on_clear_tree)
         menu.add_command(label="Save to file", command=self.save_tree_to_file)
         menu.add_command(label="Load from file", command=self.load_tree_from_file)
         try:
             menu.tk_popup(event.x_root, event.y_root)
-        except Exception as e:
-            print(f"Error occurred while popping up menu: {e}")
         finally:
             menu.grab_release()
-    
+
+    def on_random_tree(self):
+        from components.sidebar import open_random_tree_popup
+        open_random_tree_popup(self, mode="binary")
+
     def on_random_tree(self):
         self.popup = tk.Toplevel(self.canvas.winfo_toplevel())
         self.popup.title("Create Random Tree")
@@ -374,11 +390,10 @@ class BinaryTreeVisualizer:
         button_frame = tk.Frame(self.popup)
         button_frame.pack(pady=10, padx=10, fill="x")
         tk.Label(button_frame).pack(side="left", expand=True)
-        create_button = tk.Button(button_frame, text="Create", command=self.create_tree_and_close, font=("Arial", 12), bg="grey")
-        create_button.pack(side="right", padx=(5, 0))
         cancel_button = tk.Button(button_frame, text="Cancel", command=self.popup.destroy, font=("Arial", 12), bg="grey", fg="black")
         cancel_button.pack(side="right", padx=(0, 5))
-        
+        create_button = tk.Button(button_frame, text="Create", command=self.create_tree_and_close, font=("Arial", 12), bg="grey")
+        create_button.pack(side="right", padx=(5, 0))
 
         self.min_entry.bind("<KeyRelease>", lambda e: self.update_max_depth_hint())
         self.max_entry.bind("<KeyRelease>", lambda e: self.update_max_depth_hint())
@@ -512,9 +527,15 @@ class BinaryTreeVisualizer:
         y = (screen_height // 2) - (popup_height // 2)
         popup.geometry(f"+{x}+{y}")
 
-        tk.Label(popup, text="Enter value to find:", font=("Arial", 12)).pack(pady=10)
+        # Label căn trái
+        tk.Label(popup, text="Enter value to find:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=10)
         value_entry = tk.Entry(popup, font=("Arial", 12))
-        value_entry.pack(pady=10)
+        value_entry.pack(fill="x", padx=10, pady=(0, 10))
+
+        # Frame chứa nút căn phải
+        button_frame = tk.Frame(popup)
+        button_frame.pack(fill="x", padx=10, pady=10)
+        tk.Label(button_frame).pack(side="left", expand=True)  # Spacer đẩy nút sang phải
 
         def find_and_highlight():
             try:
@@ -529,8 +550,11 @@ class BinaryTreeVisualizer:
                     messagebox.showinfo("Not found", f"Node with value {value} not found.")
             except ValueError:
                 messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
+        cancel_button = tk.Button(button_frame, text="Cancel", command=popup.destroy, font=("Arial", 12), bg="grey", fg="black")
+        cancel_button.pack(side="right", padx=(0, 5))
+        find_button = tk.Button(button_frame, text="Find", command=find_and_highlight, font=("Arial", 12))
+        find_button.pack(side="right", padx=(5, 0))
 
-        tk.Button(popup, text="Find", command=find_and_highlight, font=("Arial", 12)).pack(pady=10)
 
     def find_node_by_value(self, node, value):
         if node is None:
@@ -572,17 +596,53 @@ class BinaryTreeVisualizer:
             self.sidebar.array = arr
             self.sidebar.update_array_display(arr)
 
-    def array_to_tree(self, arr):
-        if not arr:
-            return None
-        nodes = []
-        for val in arr:
-            node = TreeNode(val) if val != 0 else None
-            nodes.append(node)
-        kids = nodes[::-1]
-        root = kids.pop()
-        for node in nodes:
-            if node:
-                if kids: node.left = kids.pop()
-                if kids: node.right = kids.pop()
+    def create_random_tree(self, min_val, max_val, depth):
+        
+        max_nodes = 2**depth - 1
+        all_values = list(range(min_val, max_val + 1))
+        if max_nodes > len(all_values):
+            values = [random.choice(all_values) for _ in range(max_nodes)]
+            values[0] = min_val
+            values[-1] = max_val
+        else:
+            base_values = all_values.copy()
+            base_values.remove(min_val)
+            if max_val != min_val:
+                base_values.remove(max_val)
+            values = random.sample(base_values, max_nodes - 2)
+            values += [min_val, max_val]
+            random.shuffle(values)
+
+        def insert_random(root, val):
+            if not root:
+                return TreeNode(val)
+            node = root
+            while True:
+                if random.choice([True, False]):
+                    if node.left is None:
+                        node.left = TreeNode(val)
+                        break
+                    else:
+                        node = node.left
+                else:
+                    if node.right is None:
+                        node.right = TreeNode(val)
+                        break
+                    else:
+                        node = node.right
+            return root
+
+        root = None
+        for v in values:
+            root = insert_random(root, v)
         return root
+
+    def create_random_binary_tree(self):
+        # Gọi hàm create_random_tree của BinaryTreeVisualizer với tham số mặc định hoặc tự lấy từ UI nếu có
+        # Ở đây giả sử gọi với min_val=1, max_val=99, num_nodes=10 tạm thời
+        visualizer = BinaryTreeVisualizer(self.canvas)
+        # Gọi hàm create_random_tree của BinaryTreeVisualizer, truyền tham số nếu cần
+        tree_root = visualizer.create_random_tree(1, 99, 10)  
+        if tree_root:
+            self.set_root(tree_root)
+            self.draw_tree(tree_root)

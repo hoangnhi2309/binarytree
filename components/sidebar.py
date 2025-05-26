@@ -22,7 +22,7 @@ class Sidebar(tk.Frame):
         super().__init__(parent, bg="grey", width=400)
         self.master = parent
         self.show_status = show_status 
-        self.tree_root = None  # Khởi tạo root tree
+        self.tree_root = None
         self.array = []
         self.visualizer = BinaryTreeVisualizer(self)
         self.controller = Controller(self.visualizer, self)
@@ -31,10 +31,7 @@ class Sidebar(tk.Frame):
         self.pack_propagate(False)
 
         self.notification_label = tk.Label(self.master, text="", bg="green", fg="white", font=("Arial", 12), padx=10, pady=5)
-        self.notification_label.place(relx=1.0, rely=0.0, x=-10, y=10, anchor="ne")  # Đặt ở góc phải trên
-
-        self.array = []
-        self.highlighted_node = None # <-- OK vì giờ đã có trong đối số
+        self.notification_label.place(relx=1.0, rely=0.0, x=-10, y=10, anchor="ne")
 
         array_label = tk.Label(self, text="Array:", font=("Arial", 20, "bold"), bg="grey", fg="black")
         array_label.pack(anchor="w", padx=20, pady=(0, 5))
@@ -78,14 +75,20 @@ class Sidebar(tk.Frame):
             command=self.on_search_node
         )
         search_btn.pack(side="left", padx=(5, 0))
-#tạo button 
-        self.create_random_tree_btn = self.create_modern_button("Create random tree", self.on_random_tree)
-        self.create_modern_button("Apply changes", self.apply_array_edit)
+
+        # Các nút bấm
+        self.create_modern_button("Create random tree", self.on_random_tree)
+        self.create_modern_button("Update tree", self.update_edit)
         self.create_modern_button("Delete tree", self.on_clear_tree)
-        # self.create_modern_button("Traversal", self.show_traversal_options)
         self.create_modern_button("Save to file", self.save_tree_to_file)
         self.create_modern_button("Load from file", self.load_tree_from_file)
-    
+
+    def create_modern_button(self, text, command):
+        btn = tk.Button(self, text=text, command=command, font=("Arial", 12), bg="grey", fg="white")
+        btn.pack(pady=5, padx=10, fill="x")
+        return btn
+
+
 
     def reset_state(self):
         # Xóa dữ liệu cây, mảng, thông tin...
@@ -298,43 +301,78 @@ class Sidebar(tk.Frame):
         self.popup = tk.Toplevel(self)
         self.popup.title("Create Random Tree")
         self.popup.geometry("300x250")
-        self.popup.transient(self.winfo_toplevel())  # Popup nằm giữa cửa sổ chính
+        self.popup.transient(self.winfo_toplevel())
 
-        # Min Value
         tk.Label(self.popup, text="Min Value:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(10, 2))
         self.min_entry = tk.Entry(self.popup, font=("Arial", 12))
         self.min_entry.insert(0, "1")
         self.min_entry.pack(fill="x", padx=10, pady=(0, 10))
 
-        # Max Value
         tk.Label(self.popup, text="Max Value:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(0, 2))
         self.max_entry = tk.Entry(self.popup, font=("Arial", 12))
         self.max_entry.insert(0, "99")
         self.max_entry.pack(fill="x", padx=10, pady=(0, 10))
 
-        # Tree Depth
-        tk.Label(self.popup, text="Tree Depth:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(0, 2))
-        self.depth_entry = tk.Entry(self.popup, font=("Arial", 12))
-        self.depth_entry.pack(fill="x", padx=10, pady=(0, 10))
-        self.depth_entry.insert(0, "3")
+        from visualizer.binary_tree_visualizer import BinaryTreeVisualizer
+        from visualizer.bst_visualizer import BSTVisualizer
+        from visualizer.avl_visualizer import AVLVisualizer
 
-        # Frame chứa 2 nút Create và Cancel căn phải
+        if isinstance(self.visualizer, BinaryTreeVisualizer) and not isinstance(self.visualizer, (BSTVisualizer, AVLVisualizer)):
+            label_text = "Tree Depth:"
+        else:
+            label_text = "Number of Nodes:"
+
+        tk.Label(self.popup, text=label_text, font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(0, 2))
+
+        self.depth_entry = tk.Entry(self.popup, font=("Arial", 12))
+        self.depth_entry.insert(0, "3")
+        self.depth_entry.pack(fill="x", padx=10, pady=(0, 10))
+
         button_frame = tk.Frame(self.popup)
         button_frame.pack(pady=10, padx=10, fill="x")
 
-        # Spacer để đẩy nút sang phải
         tk.Label(button_frame).pack(side="left", expand=True)
-        # Nút Cancel (màu đỏ)
         cancel_button = tk.Button(button_frame, text="Cancel", command=self.popup.destroy, font=("Arial", 12), bg="grey", fg="black")
         cancel_button.pack(side="right", padx=(0, 5))
-        # Nút Create
-        create_button = tk.Button(button_frame, text="Create", command=self.create_tree, font=("Arial", 12), bg="grey")
+
+        create_button = tk.Button(button_frame, text="Create", command=self.handle_create_tree, font=("Arial", 12), bg="grey")
         create_button.pack(side="right", padx=(5, 0))
 
-        # Gắn sự kiện cập nhật depth tối đa
-        self.min_entry.bind("<KeyRelease>", lambda e: self.update_max_depth_hint())
-        self.max_entry.bind("<KeyRelease>", lambda e: self.update_max_depth_hint())
-        self.update_max_depth_hint()
+    def handle_create_tree(self):
+        try:
+            min_val = int(self.min_entry.get())
+            max_val = int(self.max_entry.get())
+            extra = int(self.depth_entry.get())  # depth hoặc số node tùy loại cây
+
+            if min_val > max_val or extra <= 0:
+                raise ValueError("Min > Max hoặc extra <= 0")
+
+            # Gọi create_random_tree tùy theo loại visualizer
+            vis = self.visualizer
+            if vis is None:
+                raise ValueError("Chưa có visualizer")
+
+            # Tạo cây mới
+            self.tree_root = vis.create_random_tree(min_val, max_val, extra)
+
+            if self.tree_root is None:
+                raise ValueError("Không tạo được cây")
+
+            # Cập nhật cây
+            self.visualizer.set_root(self.tree_root)
+            self.visualizer.draw_tree(self.tree_root)
+
+            # Cập nhật mảng nếu có
+            if hasattr(self, "tree_to_array") and hasattr(self, "update_array_display"):
+                self.array = self.tree_to_array(self.tree_root)
+                self.update_array_display(self.array)
+
+            self.popup.destroy()
+
+        except Exception as e:
+            print("DEBUG ERROR:", e)
+            tk.messagebox.showerror("Lỗi", "Thông số không hợp lệ hoặc không tạo được cây.")
+
 
     def create_tree(self):
         try:
@@ -580,68 +618,175 @@ class Sidebar(tk.Frame):
         popup.geometry("300x250")  # Adjust size as needed
         popup.config(bg="#f7f7f7")  # Background color for the popup
 
-        popup.grab_set()
+        popup.grab_set()    
 
-    def apply_array_edit(self):
+    def update_edit(self):
         text = self.array_display.get("1.0", "end").strip()
         lines = text.split("\n")
         new_data = []
-        all_vals = set()  # lưu tất cả node cần tạo
-
+        old_vals = []
+    
+        # Step 1: Parse input and check format
         for line in lines:
             parts = line.split(",")
             if len(parts) != 3:
-                continue
+                self.show_toast_notification("Error: Each line must have exactly 3 values (val, left, right).")
+                return
             try:
                 val = int(parts[0].strip())
                 left = int(parts[1].strip())
                 right = int(parts[2].strip())
-                new_data.append((val, left, right))
-                all_vals.add(val)
-                if left != 0:
-                    all_vals.add(left)
-                if right != 0:
-                    all_vals.add(right)
+                new_data.append([val, left, right])
+                old_vals.append(val)
             except ValueError:
-                continue
-
-        if not new_data:
-            self.show_toast_notification("Không có dữ liệu hợp lệ.")
+                self.show_toast_notification("Error: All values must be integers.")
+                return
+    
+        # Step 2: Build mapping from old to new node values (by line)
+        value_map = {}
+        for i, row in enumerate(new_data):
+            old_val = old_vals[i]
+            new_val = row[0]
+            if old_val != new_val:
+                value_map[old_val] = new_val
+    
+        # Step 3: Update all left/right references in the array (repeat until done)
+        changed = True
+        while changed:
+            changed = False
+            for row in new_data:
+                for idx in [1, 2]:
+                    if row[idx] in value_map:
+                        row[idx] = value_map[row[idx]]
+                        changed = True
+    
+        # Step 4: Check for duplicate node values
+        node_vals = [row[0] for row in new_data]
+        if len(set(node_vals)) != len(node_vals):
+            self.show_toast_notification("Error: Duplicate node values are not allowed.")
             return
-
-        # Tạo tất cả các node
+    
+        # Step 5: Automatically add new nodes if they are children but not parents
+        all_parents = set(row[0] for row in new_data)
+        all_children = set()
+        for row in new_data:
+            if row[1] != 0:
+                all_children.add(row[1])
+            if row[2] != 0:
+                all_children.add(row[2])
+        for child in list(all_children):
+            if child not in all_parents:
+                new_data.append([child, 0, 0])
+                all_parents.add(child)
+    
+        # Step 6: Build the tree
+        all_vals = set()
+        for row in new_data:
+            all_vals.add(row[0])
+            if row[1] != 0:
+                all_vals.add(row[1])
+            if row[2] != 0:
+                all_vals.add(row[2])
+    
         nodes = {val: TreeNode(val) for val in all_vals}
-
-        # Liên kết left, right
+        parent_of = {}
+        for val, left, right in new_data:
+            if left != 0:
+                if left in parent_of:
+                    self.show_toast_notification(f"Error: Node {left} has multiple parents ({parent_of[left]} and {val}).")
+                    return
+                parent_of[left] = val
+            if right != 0:
+                if right in parent_of:
+                    self.show_toast_notification(f"Error: Node {right} has multiple parents ({parent_of[right]} and {val}).")
+                    return
+                parent_of[right] = val
+    
         for val, left, right in new_data:
             node = nodes[val]
             node.left = nodes.get(left) if left != 0 else None
             node.right = nodes.get(right) if right != 0 else None
-
-        # Tìm root: node không phải con ai cả
+    
         children = set()
         for _, left, right in new_data:
             if left != 0:
                 children.add(left)
             if right != 0:
                 children.add(right)
-
         possible_roots = [val for val in all_vals if val not in children]
-
         if not possible_roots:
-            self.show_toast_notification("Không tìm thấy node root hợp lệ.")
+            self.show_toast_notification("Error: No root node found. Please check your array.")
             return
-
         root_val = possible_roots[0]
         if len(possible_roots) > 1:
-            self.show_toast_notification("Cảnh báo: Nhiều node root, chọn node đầu tiên.")
-
+            self.show_toast_notification("Warning: Multiple root nodes found. Using the first one.")
+    
+        # Step 7: Check for cycles
+        def has_cycle(node, visited):
+            if not node:
+                return False
+            if node.val in visited:
+                return True
+            visited.add(node.val)
+            if has_cycle(node.left, visited):
+                return True
+            if has_cycle(node.right, visited):
+                return True
+            visited.remove(node.val)
+            return False
+    
+        if has_cycle(nodes[root_val], set()):
+            self.show_toast_notification("Error: The tree contains a cycle. Cannot update.")
+            return
+    
+        # Step 8: Update tree and UI
         self.tree_root = nodes[root_val]
+        self.visualizer.set_root(self.tree_root)
         self.visualizer.draw_tree(self.tree_root)
-
-        # Cập nhật lại array
         self.array = self.tree_to_array(self.tree_root)
         self.update_array_display(self.array)
+        self.show_toast_notification("Tree updated successfully.")
 
-        self.show_toast_notification("Đã cập nhật lại cây từ bảng.")
+    def open_random_tree_popup(visualizer, mode="binary"):
+        popup = tk.Toplevel()
+        popup.title("Create Random Tree")
+        popup.geometry("300x250")
+        popup.transient(visualizer.canvas.winfo_toplevel())
 
+        tk.Label(popup, text="Min Value:", font=("Arial", 12)).pack(pady=(10, 2))
+        min_entry = tk.Entry(popup, font=("Arial", 12))
+        min_entry.insert(0, "1")
+        min_entry.pack()
+
+        tk.Label(popup, text="Max Value:", font=("Arial", 12)).pack(pady=(10, 2))
+        max_entry = tk.Entry(popup, font=("Arial", 12))
+        max_entry.insert(0, "99")
+        max_entry.pack()
+
+        if mode == "binary":
+            extra_label = "Tree Depth:"
+        else:
+            extra_label = "Number of Nodes:"
+        
+        tk.Label(popup, text=extra_label, font=("Arial", 12)).pack(pady=(10, 2))
+        extra_entry = tk.Entry(popup, font=("Arial", 12))
+        extra_entry.insert(0, "3")
+        extra_entry.pack()
+
+        def handle_create():
+            try:
+                min_val = int(min_entry.get())
+                max_val = int(max_entry.get())
+                extra = int(extra_entry.get())
+                root = visualizer.create_random_tree(min_val, max_val, extra)
+                if not root:
+                    raise Exception("Không tạo được cây.")
+                visualizer.set_root(root)
+                visualizer.draw_tree(root)
+                popup.destroy()
+            except Exception as e:
+                print("Lỗi tạo cây:", e)
+                tk.messagebox.showerror("Lỗi", "Không thể tạo cây.")
+
+        tk.Button(popup, text="Cancel", command=popup.destroy).pack(side="right", padx=10, pady=10)
+        tk.Button(popup, text="Create", command=handle_create).pack(side="right", padx=10, pady=10)

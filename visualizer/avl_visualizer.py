@@ -1,128 +1,101 @@
 import tkinter as tk
-from tkinter import messagebox
+import tkinter.messagebox
 import random
+from visualizer.binary_tree_visualizer import BinaryTreeVisualizer, TreeNode
 
-# ------------------- Cấu trúc dữ liệu -------------------
 
-class TreeNode:
-    def __init__(self, value):
-        self.val = value
-        self.left = None
-        self.right = None
-        self.height = 1  # Cần cho AVL
+class AVLVisualizer(BinaryTreeVisualizer):
+    def height(self, node):
+        return node.height if node else 0
 
-class AVLTree:
-    def insert(self, root, key):
+    def get_balance(self, node):
+        return self.height(node.left) - self.height(node.right) if node else 0
+
+    def update_height(self, node):
+        node.height = 1 + max(self.height(node.left), self.height(node.right))
+
+    def right_rotate(self, y):
+        x = y.left
+        T2 = x.right
+
+        x.right = y
+        y.left = T2
+
+        self.update_height(y)
+        self.update_height(x)
+        return x
+
+    def left_rotate(self, x):
+        y = x.right
+        T2 = y.left
+
+        y.left = x
+        x.right = T2
+
+        self.update_height(x)
+        self.update_height(y)
+        return y
+
+    def insert_avl(self, root, key):
         if not root:
-            return TreeNode(key)
-        elif key < root.val:
-            root.left = self.insert(root.left, key)
+            node = TreeNode(key)
+            node.height = 1
+            return node
+        if key < root.val:
+            root.left = self.insert_avl(root.left, key)
+        elif key > root.val:
+            root.right = self.insert_avl(root.right, key)
         else:
-            root.right = self.insert(root.right, key)
+            return root  # bỏ qua trùng
 
-        # Cập nhật chiều cao
-        root.height = 1 + max(self.get_height(root.left), self.get_height(root.right))
-
-        # Kiểm tra hệ số cân bằng
+        self.update_height(root)
         balance = self.get_balance(root)
 
-        # Các trường hợp xoay
-        if balance > 1 and key < root.left.val:
+        # Xử lý 4 case mất cân bằng
+        if balance > 1 and key < root.left.val:      # Left Left
             return self.right_rotate(root)
-        if balance < -1 and key > root.right.val:
+        if balance < -1 and key > root.right.val:    # Right Right
             return self.left_rotate(root)
-        if balance > 1 and key > root.left.val:
+        if balance > 1 and key > root.left.val:      # Left Right
             root.left = self.left_rotate(root.left)
             return self.right_rotate(root)
-        if balance < -1 and key < root.right.val:
+        if balance < -1 and key < root.right.val:    # Right Left
             root.right = self.right_rotate(root.right)
             return self.left_rotate(root)
 
         return root
 
-    def left_rotate(self, z):
-        y = z.right
-        T2 = y.left
+    def create_random_tree(self, min_val, max_val, num_nodes):
+        if max_val - min_val + 1 < num_nodes:
+            tk.messagebox.showerror("Error", "Không đủ số lượng giá trị duy nhất trong khoảng để tạo cây.")
+            return None
 
-        y.left = z
-        z.right = T2
+        values = random.sample(range(min_val, max_val + 1), num_nodes)
+        random.shuffle(values)
 
-        z.height = 1 + max(self.get_height(z.left), self.get_height(z.right))
-        y.height = 1 + max(self.get_height(y.left), self.get_height(y.right))
+        root = None
+        for val in values:
+            root = self.insert_avl(root, val)
+        return root
 
-        return y
+    def on_random_tree(self):
+        if hasattr(self, "sidebar") and self.sidebar:
+            self.sidebar.on_random_tree()
+        else:
+            tk.messagebox.showerror("Error", "Sidebar not found!")
 
-    def right_rotate(self, z):
-        y = z.left
-        T3 = y.right
-
-        y.right = z
-        z.left = T3
-
-        z.height = 1 + max(self.get_height(z.left), self.get_height(z.right))
-        y.height = 1 + max(self.get_height(y.left), self.get_height(y.right))
-
-        return y
-
-    def get_height(self, node):
-        return node.height if node else 0
-
-    def get_balance(self, node):
-        return self.get_height(node.left) - self.get_height(node.right) if node else 0
-
-# ------------------- Giao diện hiển thị -------------------
-
-class AVLVisualizer(tk.Frame):
-    def __init__(self, parent):
-        super().__init__(parent, bg="white")
-        self.pack(fill="both", expand=True)
-
-        self.label = tk.Label(self, text="AVL Tree View", font=("Arial", 24), bg="white")
-        self.label.pack(pady=20)
-
-        # Canvas để vẽ cây
-        self.canvas = tk.Canvas(self, bg="white", height=400)
-        self.canvas.pack(fill="both", expand=True)
-
-        # Cây AVL
-        self.tree = AVLTree()
-        self.root = None
-
-        # Ô nhập và nút thêm node
-        self.entry = tk.Entry(self)
-        self.entry.pack(pady=5)
-        self.button = tk.Button(self, text="Thêm Node", command=self.insert_node)
-        self.button.pack()
-
-    def insert_node(self):
-        try:
-            value = int(self.entry.get())
-            self.root = self.tree.insert(self.root, value)
-            self.entry.delete(0, tk.END)
-            self.draw_tree(self.root)
-        except ValueError:
-            messagebox.showerror("Lỗi", "Vui lòng nhập số nguyên.")
-
-    def draw_tree(self, node, x=400, y=50, dx=100):
-        self.canvas.delete("all")
-        self._draw_tree_recursive(node, x, y, dx)
-
-    def _draw_tree_recursive(self, node, x, y, dx):
-        if node is None:
+    def print_avl(self, node):
+        if not node:
             return
-        radius = 20
-        self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill="lightblue")
-        self.canvas.create_text(x, y, text=str(node.val))
+        print(f"Node {node.val}: height={getattr(node, 'height', None)}, balance={self.get_balance(node)}")
+        self.print_avl(node.left)
+        self.print_avl(node.right)
 
-        if node.left:
-            self.canvas.create_line(x, y + radius, x - dx, y + 60 - radius)
-            self._draw_tree_recursive(node.left, x - dx, y + 60, dx // 2)
-        if node.right:
-            self.canvas.create_line(x, y + radius, x + dx, y + 60 - radius)
-            self._draw_tree_recursive(node.right, x + dx, y + 60, dx // 2)
 
-    def bind_click_event(self):
-        pass  # Chưa cần dùng
-
-    def set_controller(self, controller):
-        pass  # Chưa cần dùng
+# Đảm bảo TreeNode luôn có height
+class TreeNode:
+    def __init__(self, val):
+        self.val = val
+        self.left = None
+        self.right = None
+        self.height = 1
