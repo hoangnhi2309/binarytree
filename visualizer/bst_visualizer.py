@@ -10,6 +10,10 @@ from components.traversal_bar import TraversalBar
 
 # --- BST Visualizer kế thừa BinaryTreeVisualizer ---
 class BSTVisualizer(BinaryTreeVisualizer):
+    def __init__(self, canvas):
+        super().__init__(canvas)
+        self.selected_node = None  # node đang được chọn
+
     def create_random_tree(self, min_val, max_val, num_nodes):
         if max_val - min_val + 1 < num_nodes:
             tk.messagebox.showerror("Error", "Không đủ số lượng giá trị duy nhất trong khoảng để tạo cây.")
@@ -245,3 +249,73 @@ class Sidebar(tk.Frame):
         except Exception as e:
             print("DEBUG ERROR:", e)
             tk.messagebox.showerror("Lỗi", "Thông số không hợp lệ hoặc không tạo được cây.")
+
+    def on_array_value_change(self, new_value, index):
+        if self.visualizer.selected_node:
+            self.visualizer.selected_node.val = new_value
+            self.visualizer.draw_tree(self.tree_root)
+        else:
+            tk.messagebox.showinfo("Info", "Hãy chọn một node trên cây trước khi sửa giá trị.")
+
+    def update_array_display(self, array):
+        # Lưu lại array hiện tại để dùng cho update
+        self.array = array.copy()
+        # Xóa frame cũ nếu có
+        if hasattr(self, "array_frame"):
+            self.array_frame.destroy()
+        self.array_frame = tk.Frame(self)
+        self.array_frame.pack(pady=10)
+
+        self.array_entries = []
+        for i, val in enumerate(array):
+            entry = tk.Entry(self.array_frame, width=5, font=("Arial", 12))
+            entry.insert(0, str(val))
+            entry.grid(row=0, column=i, padx=2)
+            self.array_entries.append(entry)
+
+        # Thêm nút Update Tree
+        update_btn = tk.Button(self.array_frame, text="Update Tree", font=("Arial", 12), bg="blue", fg="white",
+                               command=self.on_update_tree)
+        update_btn.grid(row=1, column=0, columnspan=len(array), pady=5)
+            
+    def on_update_tree(self):
+        try:
+            new_values = [int(entry.get()) for entry in self.array_entries]
+            if self.visualizer.selected_node is not None:
+                # Tìm vị trí của node đang chọn trong thứ tự inorder
+                inorder_nodes = []
+                def inorder(node):
+                    if not node:
+                        return
+                    inorder(node.left)
+                    inorder_nodes.append(node)
+                    inorder(node.right)
+                inorder(self.tree_root)
+                # Xác định vị trí node đang chọn
+                try:
+                    selected_idx = inorder_nodes.index(self.visualizer.selected_node)
+                except ValueError:
+                    tk.messagebox.showerror("Lỗi", "Không tìm thấy node được chọn.")
+                    return
+                # Cập nhật giá trị node đang chọn
+                self.visualizer.selected_node.val = new_values[selected_idx]
+                self.visualizer.draw_tree(self.tree_root)
+                # Cập nhật lại array để đồng bộ
+                if hasattr(self, "tree_to_array"):
+                    self.array = self.tree_to_array(self.tree_root)
+                    self.update_array_display(self.array)
+            else:
+                tk.messagebox.showinfo("Info", "Hãy chọn một node trên cây trước khi update.")
+        except Exception as e:
+            tk.messagebox.showerror("Lỗi", "Giá trị nhập không hợp lệ.")
+
+    def tree_to_array(self, root):
+        res = []
+        def inorder(node):
+            if not node:
+                return
+            inorder(node.left)
+            res.append(node.val)
+            inorder(node.right)
+        inorder(root)
+        return res
