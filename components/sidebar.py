@@ -38,7 +38,36 @@ class Sidebar(tk.Frame):
 
         array_frame = tk.Frame(self, bg="grey")
         array_frame.pack(padx=20, pady=10, fill="both", expand=False)
+        # Thêm frame chứa nút zoom
+        zoom_frame = tk.Frame(self, bg="grey")
+        zoom_frame.pack(pady=10)
+        zoom_in_btn = tk.Label(
+            zoom_frame,
+            text="Zoom +",
+            font=("Arial", 14),
+            bg="#ffffff",
+            fg="#333333",
+            bd=2,
+            cursor="hand2"
+        )
+        zoom_in_btn.pack(side="left", padx=5, pady=0, fill="x")
+        zoom_in_btn.bind("<Enter>", lambda e: zoom_in_btn.config(bg="#e0e0e0"))
+        zoom_in_btn.bind("<Leave>", lambda e: zoom_in_btn.config(bg="white"))
+        zoom_in_btn.bind("<Button-1>", lambda e: self.visualizer.zoom_in() if self.visualizer else None)
 
+        zoom_out_btn = tk.Label(
+            zoom_frame,
+            text="Zoom -",
+            font=("Arial", 14),
+            bg="#ffffff",
+            fg="#333333",
+            bd=2,
+            cursor="hand2"
+        )
+        zoom_out_btn.pack(side="left", padx=5, pady=0, fill="x")
+        zoom_out_btn.bind("<Enter>", lambda e: zoom_out_btn.config(bg="#e0e0e0"))
+        zoom_out_btn.bind("<Leave>", lambda e: zoom_out_btn.config(bg="white"))
+        zoom_out_btn.bind("<Button-1>", lambda e: self.visualizer.zoom_out() if self.visualizer else None)
         self.array_display = tk.Text(
             array_frame,
             wrap="none",
@@ -83,13 +112,20 @@ class Sidebar(tk.Frame):
         self.create_modern_button("Save to file", self.save_tree_to_file)
         self.create_modern_button("Load from file", self.load_tree_from_file)
 
+        self.find_result_label = tk.Label(
+            self,
+            text="",
+            font=("Arial", 12),
+            fg="green",
+            bg="#888888",
+            anchor="center"  # căn giữa
+        )
+        self.find_result_label.pack(fill="x", padx=20, pady=(0, 10))
+
     def create_modern_button(self, text, command):
         btn = tk.Button(self, text=text, command=command, font=("Arial", 12), bg="grey", fg="white")
         btn.pack(pady=5, padx=10, fill="x")
         return btn
-
-
-
     def reset_state(self):
         # Xóa dữ liệu cây, mảng, thông tin...
         self.tree_root = None
@@ -169,20 +205,28 @@ class Sidebar(tk.Frame):
         if not file_path:
             return  # Người dùng bấm Cancel
 
-        result = []
+        from visualizer.binary_tree_visualizer import BinaryTreeVisualizer
+        from visualizer.bst_visualizer import BSTVisualizer
+        from visualizer.avl_visualizer import AVLVisualizer
 
-        def dfs(node):
-            if not node:
-                return
-            left_val = node.left.val if node.left else 0
-            right_val = node.right.val if node.right else 0
-            result.append(f"{node.val}, {left_val}, {right_val}")
-            dfs(node.left)
-            dfs(node.right)
-
-        dfs(self.tree_root)
-
-        content = "\n".join(result)
+        if isinstance(self.visualizer, BinaryTreeVisualizer) and not isinstance(self.visualizer, (BSTVisualizer, AVLVisualizer)):
+            # Binary Tree: giữ nguyên
+            result = []
+            def dfs(node):
+                if not node:
+                    return
+                left_val = node.left.val if node.left else 0
+                right_val = node.right.val if node.right else 0
+                result.append(f"{node.val}, {left_val}, {right_val}")
+                dfs(node.left)
+                dfs(node.right)
+            dfs(self.tree_root)
+            content = "\n".join(result)
+        else:
+            # BST/AVL: chỉ lưu các giá trị khác 0, dãy ngang
+            array = self.tree_to_array(self.tree_root)
+            filtered = [str(v) for v in array if v != 0]
+            content = ", ".join(filtered)
 
         try:
             with open(file_path, "w") as f:
@@ -329,13 +373,15 @@ class Sidebar(tk.Frame):
 
         if isinstance(self.visualizer, BinaryTreeVisualizer) and not isinstance(self.visualizer, (BSTVisualizer, AVLVisualizer)):
             label_text = "Tree Depth:"
+            default_value = "3"
         else:
             label_text = "Number of Nodes:"
+            default_value = "10"
 
         tk.Label(self.popup, text=label_text, font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(0, 2))
 
         self.depth_entry = tk.Entry(self.popup, font=("Arial", 12))
-        self.depth_entry.insert(0, "3")
+        self.depth_entry.insert(0, default_value)
         self.depth_entry.pack(fill="x", padx=10, pady=(0, 10))
 
         button_frame = tk.Frame(self.popup)

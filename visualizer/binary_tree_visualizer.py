@@ -10,6 +10,8 @@ class TreeNode:
         self.val = value
         self.left = None
         self.right = None
+        self.height = 1 
+        
 
 class BinaryTreeVisualizer:
     def __init__(self, canvas):
@@ -22,7 +24,7 @@ class BinaryTreeVisualizer:
         self.nodes_positions = [] 
         self.root = None
         self.sidebar = None
-
+        self.zoom = 1.0  # Tỉ lệ zoom mặc định
     def set_controller(self, controller):
         self.controller = controller
 
@@ -31,11 +33,19 @@ class BinaryTreeVisualizer:
 
     def get_root(self):
         return self.root
-
     def bind_click_event(self):
-        self.canvas.bind("<Button-1>", self.on_canvas_left_click)   # Chuột trái
-        self.canvas.bind("<Button-3>", self.on_canvas_right_click)  # Chuột phải
-        self.canvas.bind("<Button-2>", self.on_canvas_right_click) # Chuột giữa
+        self.canvas.bind("<Button-1>", self.on_canvas_left_click_show_menu)   # Chuột trái: menu node
+        self.canvas.bind("<Button-3>", self.on_canvas_right_click)            # Chuột phải: menu canvas (Windows/Linux)
+        self.canvas.bind("<Button-2>", self.on_canvas_right_click)            # Chuột phải: menu canvas (Mac)
+
+    def on_canvas_left_click_show_menu(self, event):
+        x, y = event.x, event.y
+        for node_x, node_y, node in self.nodes_positions:
+            if (node_x - self.node_radius <= x <= node_x + self.node_radius and
+                node_y - self.node_radius <= y <= node_y + self.node_radius):
+                self.show_node_menu(event, node)
+                return
+        # Không làm gì nếu không nhấn vào node
 
     def on_canvas_left_click(self, event):
         x, y = event.x, event.y
@@ -49,13 +59,6 @@ class BinaryTreeVisualizer:
         self.draw_tree(self.root)
 
     def on_canvas_right_click(self, event):
-        x, y = event.x, event.y
-        for node_x, node_y, node in self.nodes_positions:
-            if (node_x - self.node_radius <= x <= node_x + self.node_radius and
-                node_y - self.node_radius <= y <= node_y + self.node_radius):
-                self.show_node_menu(event, node)
-                return
-        # Nếu không click vào node nào, hiện menu cho canvas
         self.show_canvas_menu(event)
 
     def on_canvas_middle_click(self, event):
@@ -65,11 +68,24 @@ class BinaryTreeVisualizer:
         menu = tk.Menu(self.canvas, tearoff=0)
         menu.add_command(label="Edit Node", command=lambda: self.edit_node(node))
         menu.add_command(label="Delete Node", command=lambda: self.delete_node(node))
+
         add_menu = tk.Menu(menu, tearoff=0)
-        add_menu.add_command(label="Left side", command=lambda: self.add_child_node(node, "left"))
-        add_menu.add_command(label="Right side", command=lambda: self.add_child_node(node, "right"))
+        # Disable nếu đã có node trái/phải
+        if node.left is not None:
+            add_menu.add_command(label="Left side", state="disabled")
+        else:
+            add_menu.add_command(label="Left side", command=lambda: self.add_child_node(node, "left"))
+        if node.right is not None:
+            add_menu.add_command(label="Right side", state="disabled")
+        else:
+            add_menu.add_command(label="Right side", command=lambda: self.add_child_node(node, "right"))
         menu.add_cascade(label="Add Node", menu=add_menu)
-        menu.add_command(label="Switch Node", command=lambda: self.switch_node(self.highlighted_node))
+
+        # Chỉ thêm "Switch Node" nếu là BinaryTreeVisualizer thường
+        from visualizer.bst_visualizer import BSTVisualizer
+        from visualizer.avl_visualizer import AVLVisualizer
+        if not isinstance(self, (BSTVisualizer, AVLVisualizer)):
+            menu.add_command(label="Switch Node", command=lambda: self.switch_node(self.highlighted_node))
 
         try:
             menu.tk_popup(event.x_root, event.y_root)
@@ -82,15 +98,15 @@ class BinaryTreeVisualizer:
 
         if root:
             max_depth = self.get_tree_depth(root)
-            canvas_width = max(800, int(2 ** max_depth * self.node_radius * 1.5))
-            canvas_height = (max_depth + 1) * self.level_height + 100
+            canvas_width = max(800, int(2 ** max_depth * self.node_radius * 1.5 * self.zoom))
+            start_x = canvas_width // 2
+            canvas_height = int((max_depth + 1) * self.level_height * self.zoom + 100)
             self.canvas.config(scrollregion=(0, 0, canvas_width, canvas_height))
 
             start_x = canvas_width // 2
-            x_offset = self.node_radius * (2 ** (max_depth - 1))* 0.8
-            self._draw_subtree(root, start_x, 40, x_offset, 0)
+            x_offset = self.node_radius * (2 ** (max_depth - 1)) * 0.8 * self.zoom
+            self._draw_subtree(root, start_x, 40 * self.zoom, x_offset, 0)
 
-            # 🛠 Quan trọng: Cập nhật lại scrollregion theo thực tế
             self.canvas.update_idletasks()
             bbox = self.canvas.bbox("all")
             if bbox:
@@ -99,20 +115,20 @@ class BinaryTreeVisualizer:
     def _draw_subtree(self, node, x, y, x_offset, depth):
         if node.left:
             left_x = x - x_offset
-            left_y = y + self.level_height
+            left_y = y + self.level_height * self.zoom
             self.canvas.create_line(x, y, left_x, left_y)
             self._draw_subtree(node.left, left_x, left_y, x_offset // 2, depth + 1)
 
         if node.right:
             right_x = x + x_offset
-            right_y = y + self.level_height
+            right_y = y + self.level_height * self.zoom
             self.canvas.create_line(x, y, right_x, right_y)
             self._draw_subtree(node.right, right_x, right_y, x_offset // 2, depth + 1)
 
+        radius = self.node_radius * self.zoom
         color = "grey" if node == self.highlighted_node else "white"
-        self.canvas.create_oval(x - self.node_radius, y - self.node_radius,
-                                x + self.node_radius, y + self.node_radius, fill=color)
-        self.canvas.create_text(x, y, text=str(node.val), font=("Arial", 12, "bold"))
+        self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill=color)
+        self.canvas.create_text(x, y, text=str(node.val), font=("Arial", int(12 * self.zoom), "bold"))
         self.nodes_positions.append((x, y, node))
 
     def get_tree_depth(self, node):
@@ -339,7 +355,7 @@ class BinaryTreeVisualizer:
     def show_canvas_menu(self, event):
         menu = tk.Menu(self.canvas, tearoff=0)
         menu.add_command(label="Find node", command=self.on_find_node)
-        menu.add_command(label="Create random tree", command=self.on_random_tree)  # GỌI HÀM CHUNG
+        menu.add_command(label="Create random tree", command=self.on_random_tree) 
         menu.add_command(label="Delete tree", command=self.on_clear_tree)
         menu.add_command(label="Save to file", command=self.save_tree_to_file)
         menu.add_command(label="Load from file", command=self.load_tree_from_file)
@@ -646,3 +662,23 @@ class BinaryTreeVisualizer:
         if tree_root:
             self.set_root(tree_root)
             self.draw_tree(tree_root)
+
+    def switch_node(self, node):
+        if node is None:
+            return
+        node.left, node.right = node.right, node.left
+        self.draw_tree(self.root)
+        # Cập nhật array trên sidebar nếu có
+        if hasattr(self, "sidebar") and hasattr(self.sidebar, "tree_to_array") and hasattr(self.sidebar, "update_array_display"):
+            arr = self.sidebar.tree_to_array(self.root)
+            self.sidebar.array = arr
+            self.sidebar.update_array_display(arr)
+
+    def zoom_in(self):
+        self.zoom *= 1.1
+        self.draw_tree(self.root)
+
+    def zoom_out(self):
+        if self.zoom > 0.5:  # hoặc 0.7
+            self.zoom /= 1.1
+            self.draw_tree(self.root)

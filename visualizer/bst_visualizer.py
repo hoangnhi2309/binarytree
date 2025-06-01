@@ -13,7 +13,7 @@ class BSTVisualizer(BinaryTreeVisualizer):
     def __init__(self, canvas):
         super().__init__(canvas)
         self.selected_node = None  # node đang được chọn
-
+        
     def create_random_tree(self, min_val, max_val, num_nodes):
         if max_val - min_val + 1 < num_nodes:
             tk.messagebox.showerror("Error", "Không đủ số lượng giá trị duy nhất trong khoảng để tạo cây.")
@@ -119,7 +119,7 @@ def on_random_tree(self):
 
     tk.Label(self.popup, text=label_text, font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(0, 2))
     self.extra_entry = tk.Entry(self.popup, font=("Arial", 12))
-    self.extra_entry.insert(0, "3")
+    self.extra_entry.insert(0, "10")
     self.extra_entry.pack(fill="x", padx=10, pady=(0, 10))
 
     cancel_button = tk.Button(self.popup, text="Cancel", command=self.popup.destroy,
@@ -128,7 +128,7 @@ def on_random_tree(self):
 
     create_button = tk.Button(self.popup, text="Create", command=self.handle_create_tree,
                               font=("Arial", 12), bg="grey", fg="white")
-    create_button.pack(side="right", padx=(5, 0), pady=10)
+    
 
 
 # --- Hàm tạo cây khi nhấn "Create" ---
@@ -168,7 +168,6 @@ def show_canvas_menu(self, event):
         menu.tk_popup(event.x_root, event.y_root)
     finally:
         menu.grab_release()
-
 
 
 # --- Sidebar class chính ---

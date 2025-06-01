@@ -219,11 +219,6 @@ class TraversalBar(tk.Frame):
         delay = int(1000 / self.speed_var.get())
         self.after(delay, self._traversal_step)
 
-    def toggle_pause_resume(self):
-        if self.traversing:
-            self.paused = not self.paused
-            self.pause_btn.config(text="Resume" if self.paused else "Pause")
-
     def stop_traversal(self):
         self.traversing = False
         self.paused = False
@@ -232,9 +227,8 @@ class TraversalBar(tk.Frame):
         self.node_label.config(text="Node: -")
         self.progress_var.set(0)
         self.pause_btn.config(text="Pause")
-        self.hide_result_popup()
+        # self.hide_result_popup()  # Bỏ dòng này nếu muốn popup vẫn hiện
         self.traversal_btn.config(text="Traversal")
-
 
     def next_step(self):
         if not self.traversal_nodes or self.traversal_index >= len(self.traversal_nodes):
@@ -272,3 +266,20 @@ class TraversalBar(tk.Frame):
         if not root:
             return []
         return self.get_postorder_list(root.left) + self.get_postorder_list(root.right) + [root]
+    def toggle_pause_resume(self):
+        self.show_result_popup()  # Đảm bảo popup luôn hiện khi pause/resume
+        self.update_result_display()  # Cập nhật lại nội dung popup
+        if self.traversing:
+            self.paused = not self.paused
+            self.pause_btn.config(text="Resume" if self.paused else "Pause")
+    def next_step(self):
+        if not self.traversal_nodes or self.traversal_index >= len(self.traversal_nodes):
+            return
+        self.show_result_popup()  # Đảm bảo bảng popup hiện khi next
+        node = self.traversal_nodes[self.traversal_index]
+        self.visualizer.highlighted_node = node
+        self.visualizer.draw_tree(self.tree_getter())
+        self.node_label.config(text=f"Node: {node.val}")
+        self.traversal_index += 1
+        self.progress_var.set((self.traversal_index / len(self.traversal_nodes)) * 100)
+        self.update_result_display()
