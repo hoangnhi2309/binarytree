@@ -10,9 +10,8 @@ class TreeNode:
         self.val = value
         self.left = None
         self.right = None
-        self.height = 1 
+        self.height = 1  # 👉 Thêm dòng này nếu chưa có
         
-
 class BinaryTreeVisualizer:
     def __init__(self, canvas):
         self.tree_root = None
