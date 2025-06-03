@@ -19,21 +19,16 @@ class BSTVisualizer(BinaryTreeVisualizer):
             tk.messagebox.showerror("Error", "Không đủ số lượng giá trị duy nhất trong khoảng để tạo cây.")
             return None
 
-        if num_nodes == 1:
-            values = [min_val]
-        elif num_nodes == 2:
-            values = [min_val, max_val]
-        else:
-            middle_nodes = random.sample(range(min_val + 1, max_val), num_nodes - 2)
-            values = [min_val] + middle_nodes + [max_val]
-            random.shuffle(values)
+        values = random.sample(range(min_val, max_val + 1), num_nodes)
 
         def insert_bst(root, val):
             if not root:
                 return TreeNode(val)
+            if val == root.val:
+                return root  # Bỏ qua giá trị trùng (sẽ không xảy ra vì đã random.sample)
             if val < root.val:
                 root.left = insert_bst(root.left, val)
-            elif val > root.val:
+            else:
                 root.right = insert_bst(root.right, val)
             return root
 
@@ -41,6 +36,8 @@ class BSTVisualizer(BinaryTreeVisualizer):
         for val in values:
             root = insert_bst(root, val)
         return root
+
+
     def on_random_tree(self):
         if hasattr(self, "sidebar") and self.sidebar:
             self.sidebar.on_random_tree()
@@ -281,7 +278,6 @@ class Sidebar(tk.Frame):
         try:
             new_values = [int(entry.get()) for entry in self.array_entries]
             if self.visualizer.selected_node is not None:
-                # Tìm vị trí của node đang chọn trong thứ tự inorder
                 inorder_nodes = []
                 def inorder(node):
                     if not node:
@@ -290,16 +286,36 @@ class Sidebar(tk.Frame):
                     inorder_nodes.append(node)
                     inorder(node.right)
                 inorder(self.tree_root)
-                # Xác định vị trí node đang chọn
+
                 try:
                     selected_idx = inorder_nodes.index(self.visualizer.selected_node)
                 except ValueError:
                     tk.messagebox.showerror("Lỗi", "Không tìm thấy node được chọn.")
                     return
-                # Cập nhật giá trị node đang chọn
-                self.visualizer.selected_node.val = new_values[selected_idx]
+
+                new_val = new_values[selected_idx]
+
+                # Kiểm tra xem new_val có trùng hoặc vi phạm BST không
+                def is_valid_bst_after_change(root, target_node, new_val):
+                    def check(node):
+                        if not node or node == target_node:
+                            return True
+                        if new_val == node.val:
+                            return False  # Trùng giá trị
+                        if new_val < node.val and node == target_node.right:
+                            return False
+                        if new_val > node.val and node == target_node.left:
+                            return False
+                        return check(node.left) and check(node.right)
+                    return check(root)
+
+                if not is_valid_bst_after_change(self.tree_root, self.visualizer.selected_node, new_val):
+                    tk.messagebox.showerror("Lỗi", "Giá trị mới trùng hoặc sai vị trí BST.")
+                    return
+
+                self.visualizer.selected_node.val = new_val
                 self.visualizer.draw_tree(self.tree_root)
-                # Cập nhật lại array để đồng bộ
+
                 if hasattr(self, "tree_to_array"):
                     self.array = self.tree_to_array(self.tree_root)
                     self.update_array_display(self.array)
@@ -307,6 +323,7 @@ class Sidebar(tk.Frame):
                 tk.messagebox.showinfo("Info", "Hãy chọn một node trên cây trước khi update.")
         except Exception as e:
             tk.messagebox.showerror("Lỗi", "Giá trị nhập không hợp lệ.")
+
 
     def tree_to_array(self, root):
         res = []
@@ -318,3 +335,4 @@ class Sidebar(tk.Frame):
             inorder(node.right)
         inorder(root)
         return res
+
