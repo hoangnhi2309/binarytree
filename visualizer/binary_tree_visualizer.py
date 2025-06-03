@@ -38,16 +38,19 @@ class BinaryTreeVisualizer:
         self.canvas.bind("<Button-2>", self.on_canvas_right_click)            # Chuột phải: menu canvas (Mac)
 
     def on_canvas_left_click_show_menu(self, event):
-        x, y = event.x, event.y
+        x = self.canvas.canvasx(event.x)
+        y = self.canvas.canvasy(event.y)
         for node_x, node_y, node in self.nodes_positions:
             if (node_x - self.node_radius <= x <= node_x + self.node_radius and
                 node_y - self.node_radius <= y <= node_y + self.node_radius):
                 self.show_node_menu(event, node)
                 return
+
         # Không làm gì nếu không nhấn vào node
 
     def on_canvas_left_click(self, event):
-        x, y = event.x, event.y
+        x = self.canvas.canvasx(event.x)
+        y = self.canvas.canvasy(event.y)
         for node_x, node_y, node in self.nodes_positions:
             if (node_x - self.node_radius <= x <= node_x + self.node_radius and
                 node_y - self.node_radius <= y <= node_y + self.node_radius):
@@ -56,6 +59,7 @@ class BinaryTreeVisualizer:
                 return
         self.highlighted_node = None
         self.draw_tree(self.root)
+
 
     def on_canvas_right_click(self, event):
         self.show_canvas_menu(event)
@@ -214,6 +218,44 @@ class BinaryTreeVisualizer:
     def save_value(self, node, value_entry, popup):
         try:
             new_value = int(value_entry.get())
+
+            from visualizer.bst_visualizer import BSTVisualizer
+            from visualizer.avl_visualizer import AVLVisualizer
+
+            if isinstance(self, (BSTVisualizer, AVLVisualizer)):
+                def is_valid_bst(root, target, new_val):
+                    def helper(n):
+                        if not n or n == target:
+                            return True
+                        if n.val == new_val:
+                            return False
+                        return helper(n.left) and helper(n.right)
+
+                    # Tạm thời gỡ node khỏi cây để kiểm tra lại vị trí hợp lệ
+                    original_val = target.val
+                    target.val = new_val
+
+                    def is_bst(node, low=float('-inf'), high=float('inf')):
+                        if not node:
+                            return True
+                        if node != target and node.val == new_val:
+                            return False  # trùng
+                        if not (low < node.val < high):
+                            return False
+                        return is_bst(node.left, low, node.val) and is_bst(node.right, node.val, high)
+
+                    valid = is_bst(root)
+                    target.val = original_val  # khôi phục lại
+                    return valid
+
+                if not is_valid_bst(self.root, node, new_value):
+                    messagebox.showerror("Lỗi", f"{new_value} vi phạm quy tắc BST.")
+                    return
+                # Không cho trùng giá trị với bất kỳ node nào khác
+                if self.value_exists(self.root, new_value) and new_value != node.val:
+                    messagebox.showwarning("Duplicate Value", f"The value {new_value} already exists in the tree.")
+                    return
+
             node.val = new_value
             self.draw_tree(self.root)
             if self.sidebar:
@@ -221,8 +263,11 @@ class BinaryTreeVisualizer:
                 self.sidebar.array = new_array
                 self.sidebar.update_array_display(new_array)
             popup.destroy()
+
         except ValueError:
             messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
+
+
             
     def delete_node(self, node):
         def remove_node(parent, target):
@@ -251,8 +296,38 @@ class BinaryTreeVisualizer:
             self.sidebar.array = new_array
             self.sidebar.update_array_display(new_array)
 
+    def value_exists(self, node, val):
+        if node is None:
+            return False
+        if node.val == val:
+            return True
+        return self.value_exists(node.left, val) or self.value_exists(node.right, val)
+
+    
+    def is_valid_insert(self, parent, val, is_left):
+        from visualizer.bst_visualizer import BSTVisualizer
+        from visualizer.avl_visualizer import AVLVisualizer
+
+        # Ngăn giá trị trùng cho mọi loại cây
+        if self.value_exists(self.root, val):
+            messagebox.showwarning("Duplicate Value", f"The value {val} already exists in the tree.")
+            return False
+
+        # Nếu là BST hoặc AVL thì kiểm tra hướng hợp lệ
+        if isinstance(self, (BSTVisualizer, AVLVisualizer)):
+            if is_left and val >= parent.val:
+                messagebox.showwarning("Invalid Position", f"The value {val} must be less than {parent.val} to insert on the left.")
+                return False
+            if not is_left and val <= parent.val:
+                messagebox.showwarning("Invalid Position", f"The value {val} must be greater than {parent.val} to insert on the right.")
+                return False
+
+        return True
+
+
+
+    
     def add_child_node(self, node, direction):
-        # Kiểm tra node trái hoặc phải đã tồn tại chưa
         if direction == "left" and node.left is not None:
             messagebox.showwarning("Node Exists", "Left node already exists.")
             return
@@ -260,13 +335,11 @@ class BinaryTreeVisualizer:
             messagebox.showwarning("Node Exists", "Right node already exists.")
             return
 
-        # Tạo popup nhập giá trị node mới (Toplevel)
         popup = tk.Toplevel(self.canvas)
         popup.title(f"Add {direction.capitalize()} Child Node")
         popup.geometry("300x130")
         popup.transient(self.canvas.winfo_toplevel())
 
-        # Center the popup
         popup.update_idletasks()
         screen_width = popup.winfo_screenwidth()
         screen_height = popup.winfo_screenheight()
@@ -276,25 +349,17 @@ class BinaryTreeVisualizer:
         y = (screen_height // 2) - (popup_height // 2)
         popup.geometry(f"+{x}+{y}")
 
-        # Label New Value (căn trái)
         tk.Label(popup, text="New Value:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(15, 2))
-
-        # Entry New Value
         value_entry = tk.Entry(popup, font=("Arial", 12))
         value_entry.pack(fill="x", padx=10, pady=(0, 15))
 
-        # Frame chứa nút Cancel và Add (Save)
         button_frame = tk.Frame(popup)
         button_frame.pack(pady=10, padx=10, fill="x")
-
-        # Spacer đẩy nút sang phải
         tk.Label(button_frame).pack(side="left", expand=True)
 
-        # Nút Cancel
-        cancel_button = tk.Button(button_frame, text="Cancel", command=popup.destroy, font=("Arial", 12), bg="grey", fg="black")
-        cancel_button.pack(side="right", padx=(0, 5))
+        tk.Button(button_frame, text="Cancel", command=popup.destroy,
+                font=("Arial", 12), bg="grey", fg="black").pack(side="right", padx=(0, 5))
 
-        # Hàm xử lý khi bấm nút Add
         def on_add():
             val = value_entry.get()
             try:
@@ -302,22 +367,27 @@ class BinaryTreeVisualizer:
             except ValueError:
                 messagebox.showerror("Invalid Input", "Please enter a valid integer value.")
                 return
+
+            is_left = direction == "left"
+            if not self.is_valid_insert(node, new_value, is_left):
+                return
+
             new_node = TreeNode(new_value)
-            if direction == "left":
+            if is_left:
                 node.left = new_node
-            else:  # direction == "right"
+            else:
                 node.right = new_node
 
-            popup.destroy()  # Đóng popup
+            popup.destroy()
             self.draw_tree(self.root)
             if self.sidebar:
                 new_array = self.tree_to_array(self.root)
                 self.sidebar.array = new_array
                 self.sidebar.update_array_display(new_array)
 
-        # Nút Add
-        add_button = tk.Button(button_frame, text="Add", command=on_add, font=("Arial", 12), bg="grey")
-        add_button.pack(side="right", padx=(5, 0))
+        tk.Button(button_frame, text="Add", command=on_add,
+                font=("Arial", 12), bg="grey").pack(side="right", padx=(5, 0))
+
 
 
 
