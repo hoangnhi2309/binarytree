@@ -213,6 +213,7 @@ class AVLVisualizer(BinaryTreeVisualizer):
 
         entry = tk.Entry(popup, font=("Arial", 13))
         entry.pack(fill="x", padx=20, pady=(0, 10))
+        entry.focus_set()
 
         def apply():
             try:
@@ -260,14 +261,65 @@ class AVLVisualizer(BinaryTreeVisualizer):
                 return self.search(node.left, key)
             else:
                 return self.search(node.right, key)
+
     def delete_node_popup(self, node):
-        result = tk.messagebox.askyesno("Delete Node", f"Are you sure you want to delete node {node.val}?")
-        if result:
+        popup = tk.Toplevel(self.canvas.winfo_toplevel())
+        popup.title("Delete Node")
+        popup.geometry("340x130")
+        popup.resizable(False, False)
+        popup.transient(self.canvas.winfo_toplevel())
+        popup.grab_set()
+
+        # Center popup
+        popup.update_idletasks()
+        x = popup.winfo_screenwidth() // 2 - 170
+        y = popup.winfo_screenheight() // 2 - 70
+        popup.geometry(f"+{x}+{y}")
+
+        label = tk.Label(
+            popup,
+            text=f"Are you sure you want to delete node {node.val}?",
+            font=("Arial", 13, "bold"),
+            anchor="center",
+
+            fg="black"
+        )
+        label.pack(fill="x", padx=24, pady=(30, 10))
+        # Frame cho nút để căn phải
+        def do_delete():
             self.root = self.delete_avl(self.root, node.val)
             self.draw_tree(self.root)
-        if hasattr(self, "sidebar") and hasattr(self.sidebar, "update_array_display"):
-            arr = self.get_array_representation()
-            self.sidebar.update_array_display(arr)
+            if hasattr(self, "sidebar") and hasattr(self.sidebar, "update_array_display"):
+                arr = self.get_array_representation()
+                self.sidebar.update_array_display(arr)
+            popup.destroy()
+        btn_frame = tk.Frame(popup)
+        btn_frame.pack(fill="x", padx=10, pady=(0, 15))
+        cancel_btn = tk.Button(
+            btn_frame,
+            text="Cancel",
+            font=("Arial", 12),
+            width=8,
+            command=popup.destroy
+        )
+        cancel_btn.pack(side="right", padx=(0, 5))
+    
+        do_delete = tk.Button(
+            btn_frame,
+            text="Delete",
+            font=("Arial", 12),
+            width=8,
+            command=do_delete
+        )
+        do_delete.pack(side="right")
+        # Hover effect for Cancel
+        cancel_btn.bind("<Enter>", lambda e: cancel_btn.config(bg="#d0d0d0"))
+        cancel_btn.bind("<Leave>", lambda e: cancel_btn.config(bg="#e0e0e0"))
+
+        # Hover effect for Delete
+        do_delete.bind("<Enter>", lambda e: do_delete.config(bg="#b71c1c"))
+        do_delete.bind("<Leave>", lambda e: do_delete.config(bg="#d32f2f"))
+
     def edit_node_popup(self, node):
         popup = tk.Toplevel(self.canvas.winfo_toplevel())
         popup.title("Edit Node")
@@ -287,19 +339,19 @@ class AVLVisualizer(BinaryTreeVisualizer):
 
         entry = tk.Entry(popup, font=("Arial", 13))
         entry.pack(fill="x", padx=20, pady=(0, 10))
-
+        error_label = tk.Label(popup, text="", fg="red", font=("Arial", 11))
+        error_label.pack(fill="x", padx=20, pady=(0, 5))
+        entry.focus_set()
         def apply_edit():
             try:
                 new_val = int(entry.get())
                 old_val = node.val
                 if new_val == old_val:
-                    tk.messagebox.showinfo("Info", "New value is the same as old value.")
                     popup.destroy()
                     return
                 if self.search(self.root, new_val):
-                    tk.messagebox.showwarning("Warning", "Value already exists in the tree!")
+                    error_label.config(text="Value already exists in the tree!")
                     return
-                # Xóa node cũ và chèn node mới
                 self.root = self.delete_avl(self.root, old_val)
                 self.root = self.insert_avl(self.root, new_val)
                 self.draw_tree(self.root)
@@ -308,15 +360,13 @@ class AVLVisualizer(BinaryTreeVisualizer):
                     self.sidebar.update_array_display(arr)
                 popup.destroy()
             except ValueError:
-                tk.messagebox.showerror("Error", "Please enter a valid integer.")
-
-        btn_frame = tk.Frame(popup)
+                error_label.config(text="Please enter a valid integer.")
+        btn_frame = tk.Frame(popup) 
         btn_frame.pack(fill="x", padx=10, pady=(0, 15))
-
-        cancel_btn = tk.Button(btn_frame, text="Cancel", font=("Arial", 12), width=8, command=popup.destroy)
-        cancel_btn.pack(side="right", padx=(0, 5))
-        agree_btn = tk.Button(btn_frame, text="Apply", font=("Arial", 12), width=8, command=apply_edit)
-        agree_btn.pack(side="right")
+        cancel_btn = tk.Button(btn_frame, text="Cancel", font=("Arial", 12), width=10, command=popup.destroy)
+        cancel_btn.pack(side="right", padx=(0, 8))
+        agree_btn = tk.Button(btn_frame, text="Apply", font=("Arial", 12), width=10, command=apply_edit)
+        agree_btn.pack(side="right", padx=(0, 8))
     def show_node_menu(self, event, node):
         menu = tk.Menu(self.canvas, tearoff=0)
         menu.add_command(label="Edit Node", command=lambda: self.edit_node_popup(node))
@@ -327,7 +377,6 @@ class AVLVisualizer(BinaryTreeVisualizer):
             menu.tk_popup(event.x_root, event.y_root)
         finally:
             menu.grab_release()
-
 
 
     def show_balance_factor(self, node):
@@ -356,7 +405,7 @@ class AVLVisualizer(BinaryTreeVisualizer):
 
         close_btn = tk.Button(
             popup,
-            text="Agree",
+            text="OK",
             font=("Arial", 12),
             width=8,
             command=popup.destroy

@@ -3,11 +3,8 @@ import tkinter.ttk as ttk
 import random
 import tkinter.messagebox as messagebox
 from tkinter.filedialog import asksaveasfilename
-from PIL import Image, ImageTk
-import os
 from visualizer.binary_tree_visualizer import BinaryTreeVisualizer
 from controller import Controller
-import ast
 from tkinter.filedialog import askopenfilename
 
 
@@ -29,6 +26,7 @@ class Sidebar(tk.Frame):
         self.visualizer.controller = self.controller
         self.pack(side="left", fill="y")
         self.pack_propagate(False)
+        
 
         self.notification_label = tk.Label(self.master, text="", bg="green", fg="white", font=("Arial", 12), padx=10, pady=5)
         self.notification_label.place(relx=1.0, rely=0.0, x=-10, y=10, anchor="ne")
@@ -112,15 +110,7 @@ class Sidebar(tk.Frame):
         self.create_modern_button("Save to file", self.save_tree_to_file)
         self.create_modern_button("Load from file", self.load_tree_from_file)
 
-        self.find_result_label = tk.Label(
-            self,
-            text="",
-            font=("Arial", 12),
-            fg="green",
-            bg="#888888",
-            anchor="center"  # căn giữa
-        )
-        self.find_result_label.pack(fill="x", padx=20, pady=(0, 10))
+
 
     def create_modern_button(self, text, command):
         btn = tk.Button(self, text=text, command=command, font=("Arial", 12), bg="grey", fg="white")
@@ -576,106 +566,6 @@ class Sidebar(tk.Frame):
         btn.bind("<Button-1>", lambda e: command())
         return btn  # <-- Thêm dòng này
     
-    def traverse_tree(self, root, mode):
-        # Hàm duyệt cây theo mode (preorder, inorder, postorder)
-        if root is None:
-            return []
-
-        if mode == "preorder":
-            return [root.val] + self.traverse_tree(root.left, mode) + self.traverse_tree(root.right, mode)
-        elif mode == "inorder":
-            return self.traverse_tree(root.left, mode) + [root.val] + self.traverse_tree(root.right, mode)
-        elif mode == "postorder":
-            return self.traverse_tree(root.left, mode) + self.traverse_tree(root.right, mode) + [root.val]
-        else:
-            return []
-        
-    def show_traversal_options(self):
-        if not self.tree_root:
-            messagebox.showwarning("Warning", "Tree is empty. Please create or load a tree.")
-            return
-
-        def on_select(mode):
-            result = self.traverse_tree(self.tree_root, mode)
-            result_str = " -> ".join(map(str, result))
-            # Thêm tên loại duyệt vào thông báo
-            messagebox.showinfo(f"{mode.capitalize()} Traversal", f"{mode.capitalize()} Traversal: {result_str}")
-
-        # Tạo cửa sổ popup
-        popup = tk.Toplevel(self)
-        popup.title("Choose Traversal Method")
-        popup.geometry("300x250")  # Tăng kích thước cửa sổ nếu cần
-        popup.config(bg="#f7f7f7")  # Màu nền sáng cho cửa sổ
-
-        # Tiêu đề cửa sổ
-        tk.Label(popup, text="Select Traversal Type:", font=("Arial", 14, "bold"), bg="#f7f7f7").pack(pady=20)
-
-        # Định dạng nút bấm
-        button_style = {
-            "font": ("Arial", 12),
-            "bg": "#4CAF50",  # Màu nền nút
-            "fg": "black",  # Màu chữ
-            "relief": "raised",  # Đường viền nổi cho nút
-            "bd": 0,  # Độ dày đường viền
-            "width": 20,
-            "height": 2,
-            "activebackground": "#45a049",  # Màu nền khi hover
-            "activeforeground": "white",  # Màu chữ khi hover
-            "highlightbackground": "black",  # Viền đen khi có focus
-            "highlightthickness": 2  # Độ dày viền khi có focus
-        }
-
-        # Hàm để thay đổi màu nền khi di chuột qua
-        def on_enter(e): e.widget.config(bg="#45a049")
-        def on_leave(e): e.widget.config(bg="#4CAF50")
-
-        postorder_button = tk.Button(self.popup, text="Postorder", command=lambda: [on_select("postorder"), self.popup.destroy()], **button_style)
-        postorder_button.pack(pady=10)
-        postorder_button.bind("<Enter>", lambda e: on_enter(e, postorder_button))  # Khi di chuột qua nút
-        postorder_button.bind("<Leave>", lambda e: on_leave(e, postorder_button))  # Khi chuột rời khỏi nút
-
-        # Thêm khung vào Sidebar
-        bordered_frame = tk.Frame(self, bg="white", highlightbackground="black", highlightthickness=1)
-        bordered_frame.pack(fill="x", padx=20, pady=(10, 5))
-
-        # Thêm nội dung vào khung
-        bordered_label = tk.Label(
-            bordered_frame,
-            text="This is a bordered frame",
-            font=("Arial", 12),
-            bg="white",
-            fg="black"
-        )
-        bordered_label.pack(pady=10)
-
-    #     # Tạo các nút lựa chọn duyệt cây
-        preorder_button = tk.Button(popup, text="Preorder", command=lambda: [on_select("preorder"), popup.destroy()], **button_style)
-        preorder_button.pack(pady=10)
-        preorder_button.bind("<Enter>", lambda e: on_enter(e, preorder_button))  # Khi di chuột qua nút
-        preorder_button.bind("<Leave>", lambda e: on_leave(e, preorder_button))  # Khi chuột rời khỏi nút
-
-        inorder_button = tk.Button(popup, text="Inorder", command=lambda: [on_select("inorder"), popup.destroy()], **button_style)
-        inorder_button.pack(pady=10)
-        inorder_button.bind("<Enter>", lambda e: on_enter(e, inorder_button))  # Khi di chuột qua nút
-        inorder_button.bind("<Leave>", lambda e: on_leave(e, inorder_button))  # Khi chuột rời khỏi nút
-
-        postorder_button = tk.Button(popup, text="Postorder", command=lambda: [on_select("postorder"), popup.destroy()], **button_style)
-        postorder_button.pack(pady=10)
-        postorder_button.bind("<Enter>", lambda e: on_enter(e, postorder_button))  # Khi di chuột qua nút
-        postorder_button.bind("<Leave>", lambda e: on_leave(e, postorder_button))  # Khi chuột rời khỏi nút
-
-    #     # Tạo nút đóng (Close)
-        close_button = tk.Button(popup, text="Close", command=lambda: popup.destroy(), font=("Arial", 12), bg="#f44336", fg="white", relief="raised", bd=2, width=20, height=2)
-        close_button.pack(pady=10)
-
-    def show_traversal_options(self):
-        popup = tk.Toplevel(self)
-        popup.title("Choose Traversal Method")
-        popup.geometry("300x250")  # Adjust size as needed
-        popup.config(bg="#f7f7f7")  # Background color for the popup
-
-        popup.grab_set()    
-
     def update_edit(self):
         text = self.array_display.get("1.0", "end").strip()
         from visualizer.binary_tree_visualizer import BinaryTreeVisualizer
