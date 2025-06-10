@@ -159,7 +159,7 @@ def handle_create_tree(self):
         print("DEBUG ERROR:", e)
         tk.messagebox.showerror("Lỗi", "Thông số không hợp lệ hoặc không tạo được cây.")
 
-def show_canvas_menu(self, event):
+def show_canvas_menu(self, event, node):
     menu = tk.Menu(self.canvas, tearoff=0)
     menu.add_command(label="Find node", command=self.on_find_node)
     menu.add_command(label="Create random tree", command=self.on_random_tree)
@@ -280,31 +280,41 @@ class Sidebar(tk.Frame):
     def on_update_tree(self):
         try:
             new_values = [int(entry.get()) for entry in self.array_entries]
-            if self.visualizer.selected_node is not None:
-                # Tìm vị trí của node đang chọn trong thứ tự inorder
-                inorder_nodes = []
-                def inorder(node):
-                    if not node:
-                        return
-                    inorder(node.left)
-                    inorder_nodes.append(node)
-                    inorder(node.right)
-                inorder(self.tree_root)
-                # Xác định vị trí node đang chọn
-                try:
-                    selected_idx = inorder_nodes.index(self.visualizer.selected_node)
-                except ValueError:
-                    tk.messagebox.showerror("Lỗi", "Không tìm thấy node được chọn.")
+            # Duyệt cây theo inorder để lấy danh sách node
+            inorder_nodes = []
+            def inorder(node):
+                if not node:
                     return
-                # Cập nhật giá trị node đang chọn
-                self.visualizer.selected_node.val = new_values[selected_idx]
+                inorder(node.left)
+                inorder_nodes.append(node)
+                inorder(node.right)
+            inorder(self.tree_root)
+
+            if len(new_values) != len(inorder_nodes):
+                tk.messagebox.showerror("Lỗi", "Số lượng giá trị không khớp số node trong cây.")
+                return
+
+            # Kiểm tra tính chất BST: dãy inorder phải tăng dần
+            for i in range(1, len(new_values)):
+                if new_values[i] <= new_values[i-1]:
+                    tk.messagebox.showerror("Lỗi", "Giá trị mới không thỏa mãn tính chất BST (inorder phải tăng dần).")
+                    return
+
+            changed = False
+            for i, (node, val) in enumerate(zip(inorder_nodes, new_values)):
+                if val != self.array[i]:
+                    node.val = val
+                    changed = True
+
+            if changed:
                 self.visualizer.draw_tree(self.tree_root)
-                # Cập nhật lại array để đồng bộ
                 if hasattr(self, "tree_to_array"):
                     self.array = self.tree_to_array(self.tree_root)
                     self.update_array_display(self.array)
+                tk.messagebox.showinfo("Thành công", "Cập nhật giá trị node thành công.")
             else:
-                tk.messagebox.showinfo("Info", "Hãy chọn một node trên cây trước khi update.")
+                tk.messagebox.showinfo("Thông báo", "Không có giá trị nào thay đổi.")
+
         except Exception as e:
             tk.messagebox.showerror("Lỗi", "Giá trị nhập không hợp lệ.")
 
@@ -318,3 +328,82 @@ class Sidebar(tk.Frame):
             inorder(node.right)
         inorder(root)
         return res
+
+    def update_edit(self):
+        text = self.array_display.get("1.0", "end").strip()
+        from visualizer.binary_tree_visualizer import BinaryTreeVisualizer
+        from visualizer.bst_visualizer import BSTVisualizer
+        from visualizer.avl_visualizer import AVLVisualizer
+
+        if isinstance(self.visualizer, BinaryTreeVisualizer) and not isinstance(self.visualizer, (BSTVisualizer, AVLVisualizer)):
+            # --- Xử lý cho Binary Tree ---
+            lines = text.split("\n")
+            new_vals = []
+            for line in lines:
+                parts = line.split(",")
+                if len(parts) != 3:
+                    self.show_toast_notification("Error: Each line must have exactly 3 values (val, left, right).")
+                    return
+                try:
+                    val = int(parts[0].strip())
+                    new_vals.append(val)
+                except ValueError:
+                    self.show_toast_notification("Error: All values must be integers.")
+                    return
+
+            queue = [self.tree_root] if self.tree_root else []
+            idx = 0
+            changed = False
+            while queue and idx < len(new_vals):
+                node = queue.pop(0)
+                if node:
+                    if node.val != new_vals[idx]:
+                        node.val = new_vals[idx]
+                        changed = True
+                    idx += 1
+                    queue.append(node.left)
+                    queue.append(node.right)
+
+            if changed:
+                self.visualizer.draw_tree(self.tree_root)
+                self.array = self.tree_to_array(self.tree_root)
+                self.update_array_display(self.array)
+                self.show_toast_notification("Node values updated successfully.")
+            else:
+                self.show_toast_notification("No values changed.")
+
+        else:
+            # --- Xử lý cho BST/AVL ---
+            parts = [p.strip() for p in text.split(",") if p.strip()]
+            try:
+                new_vals = [int(val) for val in parts]
+            except ValueError:
+                self.show_toast_notification("Error: All values must be integers.")
+                return
+
+            inorder_nodes = []
+            def inorder(node):
+                if not node:
+                    return
+                inorder(node.left)
+                inorder_nodes.append(node)
+                inorder(node.right)
+            inorder(self.tree_root)
+
+            if len(new_vals) != len(inorder_nodes):
+                self.show_toast_notification("Error: Số lượng giá trị không khớp số node trong cây.")
+                return
+
+            changed = False
+            for node, val in zip(inorder_nodes, new_vals):
+                if node.val != val:
+                    node.val = val
+                    changed = True
+
+            if changed:
+                self.visualizer.draw_tree(self.tree_root)
+                self.array = self.tree_to_array(self.tree_root)
+                self.update_array_display(self.array)
+                self.show_toast_notification("Node values updated successfully.")
+            else:
+                self.show_toast_notification("No values changed.")

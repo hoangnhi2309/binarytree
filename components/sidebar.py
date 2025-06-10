@@ -5,7 +5,6 @@ import tkinter.messagebox as messagebox
 from tkinter.filedialog import asksaveasfilename
 from PIL import Image, ImageTk
 import os
-from visualizer.binary_tree_visualizer import BinaryTreeVisualizer
 from controller import Controller
 import ast
 from tkinter.filedialog import askopenfilename
@@ -26,7 +25,6 @@ class Sidebar(tk.Frame):
         self.array = []
         self.visualizer = BinaryTreeVisualizer(self)
         self.controller = Controller(self.visualizer, self)
-        self.visualizer.controller = self.controller
         self.pack(side="left", fill="y")
         self.pack_propagate(False)
 
@@ -410,11 +408,6 @@ class Sidebar(tk.Frame):
 
             # Tạo cây mới
             self.tree_root = vis.create_random_tree(min_val, max_val, extra)
-
-            if self.tree_root is None:
-                raise ValueError("Không tạo được cây")
-
-            # Cập nhật cây
             self.visualizer.set_root(self.tree_root)
             self.visualizer.draw_tree(self.tree_root)
 
@@ -683,7 +676,7 @@ class Sidebar(tk.Frame):
         from visualizer.avl_visualizer import AVLVisualizer
 
         if isinstance(self.visualizer, BinaryTreeVisualizer) and not isinstance(self.visualizer, (BSTVisualizer, AVLVisualizer)):
-            # Đọc lại array mới
+            # --- Xử lý cho Binary Tree ---
             lines = text.split("\n")
             new_vals = []
             for line in lines:
@@ -698,21 +691,110 @@ class Sidebar(tk.Frame):
                     self.show_toast_notification("Error: All values must be integers.")
                     return
 
-            # Duyệt cây hiện tại theo BFS và cập nhật giá trị node
             queue = [self.tree_root] if self.tree_root else []
             idx = 0
+            changed = False
             while queue and idx < len(new_vals):
                 node = queue.pop(0)
                 if node:
-                    node.val = new_vals[idx]
+                    if node.val != new_vals[idx]:
+                        node.val = new_vals[idx]
+                        changed = True
                     idx += 1
                     queue.append(node.left)
                     queue.append(node.right)
 
-            self.visualizer.draw_tree(self.tree_root)
-            self.array = self.tree_to_array(self.tree_root)
-            self.update_array_display(self.array)
-            self.show_toast_notification("Node values updated successfully.")
+            if changed:
+                self.visualizer.root = self.tree_root  # Đảm bảo đồng bộ sau khi update!
+                self.visualizer.draw_tree(self.tree_root)
+                self.array = self.tree_to_array(self.tree_root)
+                self.update_array_display(self.array)
+                self.show_toast_notification("Node values updated successfully.")
+            else:
+                self.show_toast_notification("No values changed.")
+
         else:
-            # ...giữ nguyên cho BST/AVL...
-            pass
+            # --- Xử lý cho BST/AVL ---
+            parts = [p.strip() for p in text.split(",") if p.strip()]
+            try:
+                new_vals = [int(val) for val in parts]
+            except ValueError:
+                self.show_toast_notification("Error: All values must be integers.")
+                return
+
+            inorder_nodes = []
+            def inorder(node):
+                if not node:
+                    return
+                inorder(node.left)
+                inorder_nodes.append(node)
+                inorder(node.right)
+            inorder(self.tree_root)
+
+            if len(new_vals) != len(inorder_nodes):
+                self.show_toast_notification("Error: Số lượng giá trị không khớp số node trong cây.")
+                return
+
+            changed = False
+            for node, val in zip(inorder_nodes, new_vals):
+                if node.val != val:
+                    node.val = val
+                    changed = True
+
+            if changed:
+                self.visualizer.draw_tree(self.tree_root)
+                self.array = self.tree_to_array(self.tree_root)
+                self.update_array_display(self.array)
+                self.show_toast_notification("Node values updated successfully.")
+            else:
+                self.show_toast_notification("No values changed.")
+
+    def set_visualizer(self, visualizer):
+        self.visualizer = visualizer
+        self.controller = Controller(self.visualizer, self)
+        self.visualizer.controller = self.controller
+
+
+def setup_visualizer(visualizer_class, sidebar, right_frame):
+    visualizer = visualizer_class(right_frame)
+    visualizer.sidebar = sidebar  # Thiết lập sidebar cho visualizer
+    sidebar.visualizer = visualizer  # Thiết lập visualizer cho sidebar
+    return visualizer
+
+def on_sidebar_button_click(sidebar, visualizer_class, right_frame):
+    # Xóa visualizer cũ nếu có
+    if sidebar.visualizer:
+        sidebar.visualizer.clear_canvas()
+
+    # Thiết lập visualizer mới
+    visualizer = setup_visualizer(visualizer_class, sidebar, right_frame)
+
+    # Tạo cây mẫu và vẽ
+    sample_tree = TreeNode(1)
+    sample_tree.left = TreeNode(2)
+    sample_tree.right = TreeNode(3)
+    sample_tree.left.left = TreeNode(4)
+    sample_tree.left.right = TreeNode(5)
+
+    sidebar.tree_root = sample_tree
+    visualizer.set_root(sample_tree)
+    visualizer.draw_tree(sample_tree)
+
+    # Cập nhật lại array display
+    array_representation = sidebar.tree_to_array(sample_tree)
+    sidebar.update_array_display(array_representation)
+
+from visualizer.binary_tree_visualizer import BinaryTreeVisualizer
+
+def on_binary_tree_click(sidebar, right_frame):
+    on_sidebar_button_click(sidebar, BinaryTreeVisualizer, right_frame)
+
+from visualizer.bst_visualizer import BSTVisualizer
+
+def on_bst_click(sidebar, right_frame):
+    on_sidebar_button_click(sidebar, BSTVisualizer, right_frame)
+
+from visualizer.avl_visualizer import AVLVisualizer
+
+def on_avl_click(sidebar, right_frame):
+    on_sidebar_button_click(sidebar, AVLVisualizer, right_frame)

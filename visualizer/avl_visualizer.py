@@ -362,4 +362,11 @@ class AVLVisualizer(BinaryTreeVisualizer):
             command=popup.destroy
         )
         close_btn.pack(pady=(0, 15), padx=15, anchor="e", side="right")
+    def update_tree_from_array(self, new_values):
+        # new_values: list các giá trị mới theo thứ tự inorder
+        # Xây lại cây AVL từ đầu với các giá trị mới
+        self.root = None
+        for val in new_values:
+            self.root = self.insert_avl(self.root, val)
+        self.draw_tree(self.root)
 
