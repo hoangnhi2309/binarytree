@@ -507,6 +507,84 @@ class Sidebar(tk.Frame):
             inorder(node.right)
         inorder(root)
         return res
+    def update_edit(self):
+        text = self.array_display.get("1.0", "end").strip()
+        from visualizer.binary_tree_visualizer import BinaryTreeVisualizer
+        from visualizer.bst_visualizer import BSTVisualizer
+        from visualizer.avl_visualizer import AVLVisualizer
+
+        if isinstance(self.visualizer, BinaryTreeVisualizer) and not isinstance(self.visualizer, (BSTVisualizer, AVLVisualizer)):
+            # --- Xử lý cho Binary Tree ---
+            lines = text.split("\n")
+            new_vals = []
+            for line in lines:
+                parts = line.split(",")
+                if len(parts) != 3:
+                    self.show_toast_notification("Error: Each line must have exactly 3 values (val, left, right).")
+                    return
+                try:
+                    val = int(parts[0].strip())
+                    new_vals.append(val)
+                except ValueError:
+                    self.show_toast_notification("Error: All values must be integers.")
+                    return
+
+            queue = [self.tree_root] if self.tree_root else []
+            idx = 0
+            changed = False
+            while queue and idx < len(new_vals):
+                node = queue.pop(0)
+                if node:
+                    if node.val != new_vals[idx]:
+                        node.val = new_vals[idx]
+                        changed = True
+                    idx += 1
+                    queue.append(node.left)
+                    queue.append(node.right)
+
+            if changed:
+                self.visualizer.draw_tree(self.tree_root)
+                self.array = self.tree_to_array(self.tree_root)
+                self.update_array_display(self.array)
+                self.show_toast_notification("Node values updated successfully.")
+            else:
+                self.show_toast_notification("No values changed.")
+
+        else:
+            # --- Xử lý cho BST/AVL ---
+            parts = [p.strip() for p in text.split(",") if p.strip()]
+            try:
+                new_vals = [int(val) for val in parts]
+            except ValueError:
+                self.show_toast_notification("Error: All values must be integers.")
+                return
+
+            inorder_nodes = []
+            def inorder(node):
+                if not node:
+                    return
+                inorder(node.left)
+                inorder_nodes.append(node)
+                inorder(node.right)
+            inorder(self.tree_root)
+
+            if len(new_vals) != len(inorder_nodes):
+                self.show_toast_notification("Error: Số lượng giá trị không khớp số node trong cây.")
+                return
+
+            changed = False
+            for node, val in zip(inorder_nodes, new_vals):
+                if node.val != val:
+                    node.val = val
+                    changed = True
+
+            if changed:
+                self.visualizer.draw_tree(self.tree_root)
+                self.array = self.tree_to_array(self.tree_root)
+                self.update_array_display(self.array)
+                self.show_toast_notification("Node values updated successfully.")
+            else:
+                self.show_toast_notification("No values changed.")
 
     def count_nodes(self, node):
         if not node:

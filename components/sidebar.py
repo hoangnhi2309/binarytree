@@ -22,7 +22,6 @@ class Sidebar(tk.Frame):
         self.array = []
         self.visualizer = BinaryTreeVisualizer(self)
         self.controller = Controller(self.visualizer, self)
-        self.visualizer.controller = self.controller
         self.pack(side="left", fill="y")
         self.pack_propagate(False)
 
@@ -338,11 +337,6 @@ class Sidebar(tk.Frame):
 
             # Tạo cây mới
             self.tree_root = vis.create_random_tree(min_val, max_val, extra)
-
-            if self.tree_root is None:
-                raise ValueError("Không tạo được cây")
-
-            # Cập nhật cây
             self.visualizer.set_root(self.tree_root)
             self.visualizer.draw_tree(self.tree_root)
 
@@ -488,7 +482,7 @@ class Sidebar(tk.Frame):
         if isinstance(self.visualizer, BinaryTreeVisualizer) and not isinstance(self.visualizer, (BSTVisualizer, AVLVisualizer)):
             lines = [line.strip() for line in text.split("\n") if line.strip()]
             node_map = {}
-            
+
             for line in lines:
                 parts = line.split(",")
                 if len(parts) != 3:
@@ -505,6 +499,7 @@ class Sidebar(tk.Frame):
                 except ValueError:
                     self.show_toast_notification("All values ​​must be integers.")
                     return
+
 
             if not node_map:
                 self.show_toast_notification("There is no data to update.")
@@ -590,5 +585,3 @@ class Sidebar(tk.Frame):
             self.tree_root = self.visualizer.root
             self.show_toast_notification("Tree update successful.")
             return
-
-    

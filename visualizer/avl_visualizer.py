@@ -359,6 +359,7 @@ class AVLVisualizer(BinaryTreeVisualizer):
             command=popup.destroy
         )
         close_btn.pack(pady=(0, 15), padx=15, anchor="e", side="right")
+
     def update_tree_from_array(self, values):
         if isinstance(values, str):
             values = [int(v.strip()) for v in values.split(",") if v.strip()]

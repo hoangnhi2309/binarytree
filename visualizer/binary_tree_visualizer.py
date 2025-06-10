@@ -36,10 +36,21 @@ class BinaryTreeVisualizer:
     def get_root(self):
         return self.root
     def bind_click_event(self):
-        self.canvas.bind("<Button-1>", self.on_canvas_left_click)           # Nhấp 1 lần: đổi màu
-        self.canvas.bind("<Double-Button-1>", self.on_canvas_double_click)  # Nhấp 2 lần: hiện menu
-        self.canvas.bind("<Button-3>", self.on_canvas_right_click)          # Chuột phải: menu
-        self.canvas.bind("<Button-2>", self.on_canvas_right_click)          # Chuột phải (Mac)
+        self.canvas.bind("<Button-1>", self.on_canvas_left_click_show_menu)   # Chuột trái: menu node
+        self.canvas.bind("<Button-3>", self.on_canvas_right_click)            # Chuột phải: menu canvas (Windows/Linux)
+        self.canvas.bind("<Button-2>", self.on_canvas_right_click)            # Chuột phải: menu canvas (Mac)
+
+    def on_canvas_left_click_show_menu(self, event):
+        x = self.canvas.canvasx(event.x)
+        y = self.canvas.canvasy(event.y)
+        for node_x, node_y, node in self.nodes_positions:
+            if (node_x - self.node_radius <= x <= node_x + self.node_radius and
+                node_y - self.node_radius <= y <= node_y + self.node_radius):
+                self.show_node_menu(event, node)
+                return
+
+        # Không làm gì nếu không nhấn vào node
+
 
     def on_canvas_left_click(self, event):
         x = self.canvas.canvasx(event.x)
@@ -397,9 +408,9 @@ class BinaryTreeVisualizer:
                 new_array = self.tree_to_array(self.root)
                 self.sidebar.array = new_array
                 self.sidebar.update_array_display(new_array)
-        # Nút Add
-        add_button = tk.Button(button_frame, text="Add", command=on_add, font=("Arial", 12), bg="grey")
-        add_button.pack(side="right", padx=(5, 0))
+
+        tk.Button(button_frame, text="Add", command=on_add,
+                font=("Arial", 12), bg="grey").pack(side="right", padx=(5, 0))
 
 
     def switch_all_nodes_with_two_children(self):
@@ -640,29 +651,13 @@ class BinaryTreeVisualizer:
     def find_node_by_value(self, node, value):
         if node is None:
             return None
-
-        # Define find_node as a local function
-        def find_node(root, val):
-            if not root:
-                return None
-            queue = [root]
-            while queue:
-                n = queue.pop(0)
-                if n and n.val == val:
-                    return n
-                if n:
-                    queue.append(n.left)
-                    queue.append(n.right)
-            return None
-
-        found_node = find_node(self.root, value)
-        if found_node:
-            self.highlighted_node = found_node
-            self.draw_tree(self.root)
-            self.scroll_to_node(found_node)  # Đảm bảo gọi dòng này!
-            messagebox.showinfo("Found", f"Node {value} found and highlighted.")
-        else:
-            messagebox.showwarning("Not Found", f"Node {value} not found in the tree.")    
+        if node.val == value:
+            return node
+        left = self.find_node_by_value(node.left, value)
+        if left:
+            return left
+        return self.find_node_by_value(node.right, value)
+    
     def save_tree_to_file(self):
         if not self.root:
             messagebox.showwarning("No Tree", "There is no tree to save.")
@@ -760,10 +755,6 @@ class BinaryTreeVisualizer:
             arr = self.sidebar.tree_to_array(self.root)
             self.sidebar.array = arr
             self.sidebar.update_array_display(arr)
-    
-    
-
-
 
     def zoom_in(self):
         self.zoom *= 1.1
