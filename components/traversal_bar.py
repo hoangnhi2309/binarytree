@@ -266,6 +266,7 @@ class TraversalBar(tk.Frame):
         if not root:
             return []
         return self.get_postorder_list(root.left) + self.get_postorder_list(root.right) + [root]
+    
     def toggle_pause_resume(self):
         self.show_result_popup()  # Đảm bảo popup luôn hiện khi pause/resume
         self.update_result_display()  # Cập nhật lại nội dung popup

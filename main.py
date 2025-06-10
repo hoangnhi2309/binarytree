@@ -1,4 +1,5 @@
 import tkinter as tk
+import tkinter.ttk as ttk
 from components.header import Header
 from components.sidebar import Sidebar
 from visualizer.binary_tree_visualizer import BinaryTreeVisualizer
@@ -18,17 +19,106 @@ def setup_visualizer(VisualizerClass, sidebar, right_frame):
     for widget in right_frame.winfo_children():
         widget.destroy()
 
+    # === Style cho ttk.Scrollbar ===
+    style = ttk.Style()
+    style.theme_use("clam")  # Quan trọng để chỉnh màu
+    style.configure("Custom.Horizontal.TScrollbar",
+                    troughcolor="#eeeeee",
+                    background="#cccccc",
+                    arrowcolor="#333333")
+    style.configure("Custom.Vertical.TScrollbar",
+                    troughcolor="#eeeeee",
+                    background="#cccccc",
+                    arrowcolor="#333333")
+
     # === Canvas Scroll Wrapper ===
     canvas_frame = tk.Frame(right_frame, bg="lightgrey")
     canvas_frame.pack(fill="both", expand=True)
 
-    x_scroll = tk.Scrollbar(canvas_frame, orient="horizontal")
+    # === Scrollbars dùng ttk.Scrollbar ===
+    x_scroll = ttk.Scrollbar(canvas_frame, orient="horizontal",
+                             style="Custom.Horizontal.TScrollbar")
     x_scroll.pack(side="bottom", fill="x")
-    y_scroll = tk.Scrollbar(canvas_frame, orient="vertical")
+
+    y_scroll = ttk.Scrollbar(canvas_frame, orient="vertical",
+                             style="Custom.Vertical.TScrollbar")
     y_scroll.pack(side="right", fill="y")
+
     canvas = tk.Canvas(canvas_frame, bg="lightgrey",
-                       xscrollcommand=x_scroll.set, yscrollcommand=y_scroll.set)
+                       xscrollcommand=x_scroll.set,
+                       yscrollcommand=y_scroll.set)
     canvas.pack(fill="both", expand=True)
+
+    x_scroll.config(command=canvas.xview)
+    y_scroll.config(command=canvas.yview)    # Xóa các widget cũ trong right_frame (nếu có)
+    for widget in right_frame.winfo_children():
+        widget.destroy()
+
+    # === Style cho ttk.Scrollbar ===
+    style = ttk.Style()
+    style.theme_use("clam")  # Quan trọng để chỉnh màu
+    style.configure("Custom.Horizontal.TScrollbar",
+                    troughcolor="#eeeeee",
+                    background="#cccccc",
+                    arrowcolor="#333333")
+    style.configure("Custom.Vertical.TScrollbar",
+                    troughcolor="#eeeeee",
+                    background="#cccccc",
+                    arrowcolor="#333333")
+
+    # === Canvas Scroll Wrapper ===
+    canvas_frame = tk.Frame(right_frame, bg="lightgrey")
+    canvas_frame.pack(fill="both", expand=True)
+
+    # === Scrollbars dùng ttk.Scrollbar ===
+    x_scroll = ttk.Scrollbar(canvas_frame, orient="horizontal",
+                             style="Custom.Horizontal.TScrollbar")
+    x_scroll.pack(side="bottom", fill="x")
+
+    y_scroll = ttk.Scrollbar(canvas_frame, orient="vertical",
+                             style="Custom.Vertical.TScrollbar")
+    y_scroll.pack(side="right", fill="y")
+
+    canvas = tk.Canvas(canvas_frame, bg="lightgrey",
+                       xscrollcommand=x_scroll.set,
+                       yscrollcommand=y_scroll.set)
+    canvas.pack(fill="both", expand=True)
+
+    x_scroll.config(command=canvas.xview)
+    y_scroll.config(command=canvas.yview)    # Xóa các widget cũ trong right_frame (nếu có)
+    for widget in right_frame.winfo_children():
+        widget.destroy()
+
+    # === Style cho ttk.Scrollbar ===
+    style = ttk.Style()
+    style.theme_use("clam")  # Quan trọng để chỉnh màu
+    style.configure("Custom.Horizontal.TScrollbar",
+                    troughcolor="#eeeeee",
+                    background="#cccccc",
+                    arrowcolor="#333333")
+    style.configure("Custom.Vertical.TScrollbar",
+                    troughcolor="#eeeeee",
+                    background="#cccccc",
+                    arrowcolor="#333333")
+
+    # === Canvas Scroll Wrapper ===
+    canvas_frame = tk.Frame(right_frame, bg="lightgrey")
+    canvas_frame.pack(fill="both", expand=True)
+
+    # === Scrollbars dùng ttk.Scrollbar ===
+    x_scroll = ttk.Scrollbar(canvas_frame, orient="horizontal",
+                             style="Custom.Horizontal.TScrollbar")
+    x_scroll.pack(side="bottom", fill="x")
+
+    y_scroll = ttk.Scrollbar(canvas_frame, orient="vertical",
+                             style="Custom.Vertical.TScrollbar")
+    y_scroll.pack(side="right", fill="y")
+
+    canvas = tk.Canvas(canvas_frame, bg="lightgrey",
+                       xscrollcommand=x_scroll.set,
+                       yscrollcommand=y_scroll.set)
+    canvas.pack(fill="both", expand=True)
+
     x_scroll.config(command=canvas.xview)
     y_scroll.config(command=canvas.yview)
 
@@ -47,7 +137,7 @@ def setup_visualizer(VisualizerClass, sidebar, right_frame):
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.geometry("1200x700")
+    root.attributes('-fullscreen', True)
     root.title("Tree Management")
 
     # Header frame trên cùng
