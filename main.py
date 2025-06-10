@@ -126,9 +126,8 @@ def setup_visualizer(VisualizerClass, sidebar, right_frame):
     visualizer = VisualizerClass(canvas)
     visualizer.bind_click_event()
     sidebar.visualizer = visualizer
-    if hasattr(visualizer, "controller"):
-        sidebar.controller = visualizer.controller
     visualizer.sidebar = sidebar
+    sidebar.tree_root = getattr(visualizer, "root", None)  # Đảm bảo đồng bộ
 
     # Traversal bar (fixed below canvas)
     traversal_bar = TraversalBar(right_frame, visualizer, tree_getter=lambda: sidebar.tree_root)
