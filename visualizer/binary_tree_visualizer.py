@@ -339,8 +339,6 @@ class BinaryTreeVisualizer:
         return True
 
 
-
-
     def add_child_node(self, node, direction):
         if direction == "left" and node.left is not None:
             messagebox.showwarning("Node Exists", "Left node already exists.")
@@ -366,6 +364,7 @@ class BinaryTreeVisualizer:
         tk.Label(popup, text="New Value:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(15, 2))
         value_entry = tk.Entry(popup, font=("Arial", 12))
         value_entry.pack(fill="x", padx=10, pady=(0, 15))
+        value_entry.focus_set()
 
         button_frame = tk.Frame(popup)
         button_frame.pack(pady=10, padx=10, fill="x")
@@ -398,13 +397,9 @@ class BinaryTreeVisualizer:
                 new_array = self.tree_to_array(self.root)
                 self.sidebar.array = new_array
                 self.sidebar.update_array_display(new_array)
-
-
         # Nút Add
         add_button = tk.Button(button_frame, text="Add", command=on_add, font=("Arial", 12), bg="grey")
         add_button.pack(side="right", padx=(5, 0))
-        tk.Button(button_frame, text="Add", command=on_add,
-                font=("Arial", 12), bg="grey").pack(side="right", padx=(5, 0))
 
 
     def switch_all_nodes_with_two_children(self):
@@ -668,7 +663,6 @@ class BinaryTreeVisualizer:
             messagebox.showinfo("Found", f"Node {value} found and highlighted.")
         else:
             messagebox.showwarning("Not Found", f"Node {value} not found in the tree.")    
-
     def save_tree_to_file(self):
         if not self.root:
             messagebox.showwarning("No Tree", "There is no tree to save.")
@@ -766,6 +760,8 @@ class BinaryTreeVisualizer:
             arr = self.sidebar.tree_to_array(self.root)
             self.sidebar.array = arr
             self.sidebar.update_array_display(arr)
+    
+    
 
 
 
@@ -790,7 +786,72 @@ class BinaryTreeVisualizer:
                 self.zoom_in()
             elif event.num == 5:
                 self.zoom_out()
-    def update_edit(self):
-        # Ví dụ: vẽ lại cây với dữ liệu hiện tại
-        if self.visualizer:
-            self.visualizer.draw_tree(self.visualizer.root)
+    def update_edit(self, array_text):
+        """
+        Cập nhật lại cây từ array dạng val, left, right (mỗi dòng một node).
+        array_text: chuỗi nhiều dòng, mỗi dòng: val, left, right
+        """
+        lines = [line.strip() for line in array_text.strip().split("\n") if line.strip()]
+        node_map = {}
+        for line in lines:
+            parts = line.split(",")
+            if len(parts) != 3:
+                import tkinter.messagebox as messagebox
+                messagebox.showerror("Error", "Each line must have exactly 3 values: val, left, right.")
+                return
+            try:
+                val = int(parts[0].strip())
+                left = int(parts[1].strip())
+                right = int(parts[2].strip())
+                if val in node_map:
+                    import tkinter.messagebox as messagebox
+                    messagebox.showerror("Error", f"Node {val} duplicated.")
+                    return
+                node_map[val] = (left, right)
+            except ValueError:
+                import tkinter.messagebox as messagebox
+                messagebox.showerror("Error", "All values must be integers.")
+                return
+
+        if not node_map:
+            import tkinter.messagebox as messagebox
+            messagebox.showwarning("Warning", "There is no data to update.")
+            return
+
+        # Tạo các node
+        nodes = {}
+        def get_node(val):
+            if val == 0:
+                return None
+            if val not in nodes:
+                nodes[val] = TreeNode(val)
+            return nodes[val]
+
+        for val, (l_val, r_val) in node_map.items():
+            node = get_node(val)
+            node.left = get_node(l_val)
+            node.right = get_node(r_val)
+
+        try:
+            root_val = int(lines[0].split(",")[0].strip())
+            root = get_node(root_val)
+        except Exception:
+            import tkinter.messagebox as messagebox
+            messagebox.showerror("Error", "Error determining root node.")
+            return
+
+        # Giữ lại các node còn liên kết từ root
+        linked = set()
+        def dfs(n):
+            if n and n.val not in linked:
+                linked.add(n.val)
+                dfs(n.left)
+                dfs(n.right)
+        dfs(root)
+
+        self.root = root
+        self.draw_tree(root)
+        # Nếu có sidebar, cập nhật lại array hiển thị
+        if hasattr(self, "sidebar") and hasattr(self.sidebar, "update_array_display"):
+            arr = self.tree_to_array(root)
+            self.sidebar.update_array_display(arr)
