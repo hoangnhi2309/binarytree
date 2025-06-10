@@ -11,7 +11,7 @@ class TreeNode:
         self.left = None
         self.right = None
         self.height = 1 
-        
+
 class BinaryTreeVisualizer:
     def __init__(self, canvas):
         self.tree_root = None
@@ -24,6 +24,9 @@ class BinaryTreeVisualizer:
         self.root = None
         self.sidebar = None
         self.zoom = 1.0  # Tỉ lệ zoom mặc định
+        self.canvas.bind("<MouseWheel>", self.on_mousewheel)  # Windows, Mac (cuộn)
+        self.canvas.bind("<Button-4>", self.on_mousewheel)    # Một số Linux/Mac cuộn lên
+        self.canvas.bind("<Button-5>", self.on_mousewheel)    # Một số Linux/Mac cuộn xuống
     def set_controller(self, controller):
         self.controller = controller
 
@@ -33,20 +36,10 @@ class BinaryTreeVisualizer:
     def get_root(self):
         return self.root
     def bind_click_event(self):
-        self.canvas.bind("<Button-1>", self.on_canvas_left_click_show_menu)   # Chuột trái: menu node
-        self.canvas.bind("<Button-3>", self.on_canvas_right_click)            # Chuột phải: menu canvas (Windows/Linux)
-        self.canvas.bind("<Button-2>", self.on_canvas_right_click)            # Chuột phải: menu canvas (Mac)
-
-    def on_canvas_left_click_show_menu(self, event):
-        x = self.canvas.canvasx(event.x)
-        y = self.canvas.canvasy(event.y)
-        for node_x, node_y, node in self.nodes_positions:
-            if (node_x - self.node_radius <= x <= node_x + self.node_radius and
-                node_y - self.node_radius <= y <= node_y + self.node_radius):
-                self.show_node_menu(event, node)
-                return
-
-        # Không làm gì nếu không nhấn vào node
+        self.canvas.bind("<Button-1>", self.on_canvas_left_click)           # Nhấp 1 lần: đổi màu
+        self.canvas.bind("<Double-Button-1>", self.on_canvas_double_click)  # Nhấp 2 lần: hiện menu
+        self.canvas.bind("<Button-3>", self.on_canvas_right_click)          # Chuột phải: menu
+        self.canvas.bind("<Button-2>", self.on_canvas_right_click)          # Chuột phải (Mac)
 
     def on_canvas_left_click(self, event):
         x = self.canvas.canvasx(event.x)
@@ -59,9 +52,21 @@ class BinaryTreeVisualizer:
                 return
         self.highlighted_node = None
         self.draw_tree(self.root)
-
-
+    def on_canvas_double_click(self, event):
+        x = self.canvas.canvasx(event.x)
+        y = self.canvas.canvasy(event.y)
+        for node_x, node_y, node in self.nodes_positions:
+            if (node_x - self.node_radius <= x <= node_x + self.node_radius and
+                node_y - self.node_radius <= y <= node_y + self.node_radius):
+                self.show_node_menu(event, node)
+                return
     def on_canvas_right_click(self, event):
+        x, y = event.x, event.y
+        for node_x, node_y, node in self.nodes_positions:
+            if (node_x - self.node_radius <= x <= node_x + self.node_radius and
+                node_y - self.node_radius <= y <= node_y + self.node_radius):
+                self.show_node_menu(event, node)
+                return
         self.show_canvas_menu(event)
 
     def on_canvas_middle_click(self, event):
@@ -88,7 +93,7 @@ class BinaryTreeVisualizer:
         from visualizer.bst_visualizer import BSTVisualizer
         from visualizer.avl_visualizer import AVLVisualizer
         if not isinstance(self, (BSTVisualizer, AVLVisualizer)):
-            menu.add_command(label="Switch Node", command=lambda: self.switch_node(self.highlighted_node))
+            menu.add_command(label="Switch Node", command=lambda: self.switch_node(node))
 
         try:
             menu.tk_popup(event.x_root, event.y_root)
@@ -158,6 +163,18 @@ class BinaryTreeVisualizer:
         return 1 + max(self.get_tree_depth(node.left), self.get_tree_depth(node.right))
 
     def scroll_to_node(self, node):
+
+        if not node or not hasattr(node, 'canvas_x') or not hasattr(node, 'canvas_y'):
+            return
+        # Giả sử node.canvas_x, node.canvas_y là tọa độ node trên canvas
+        canvas = self.canvas
+        canvas_width = int(canvas.cget("width"))
+        canvas_height = int(canvas.cget("height"))
+        x = max(node.canvas_x - canvas_width // 2, 0)
+        y = max(node.canvas_y - canvas_height // 2, 0)
+        canvas.xview_moveto(x / canvas.bbox("all")[2])
+        canvas.yview_moveto(y / canvas.bbox("all")[3])
+
         for x, y, n in self.nodes_positions:
             if n == node:
                 # Kích thước vùng vẽ (toàn bộ canvas)
@@ -178,7 +195,7 @@ class BinaryTreeVisualizer:
                 # Scroll theo tỷ lệ (0.0 -> 1.0)
                 self.canvas.xview_moveto(x_target / total_width)
                 self.canvas.yview_moveto(y_target / total_height)
-                
+
                 break
 
     def tree_to_array(self, root):
@@ -300,7 +317,7 @@ class BinaryTreeVisualizer:
             return True
         return self.value_exists(node.left, val) or self.value_exists(node.right, val)
 
-    
+
     def is_valid_insert(self, parent, val, is_left):
         from visualizer.bst_visualizer import BSTVisualizer
         from visualizer.avl_visualizer import AVLVisualizer
@@ -323,7 +340,7 @@ class BinaryTreeVisualizer:
 
 
 
-    
+
     def add_child_node(self, node, direction):
         if direction == "left" and node.left is not None:
             messagebox.showwarning("Node Exists", "Left node already exists.")
@@ -382,6 +399,10 @@ class BinaryTreeVisualizer:
                 self.sidebar.array = new_array
                 self.sidebar.update_array_display(new_array)
 
+
+        # Nút Add
+        add_button = tk.Button(button_frame, text="Add", command=on_add, font=("Arial", 12), bg="grey")
+        add_button.pack(side="right", padx=(5, 0))
         tk.Button(button_frame, text="Add", command=on_add,
                 font=("Arial", 12), bg="grey").pack(side="right", padx=(5, 0))
 
@@ -545,7 +566,7 @@ class BinaryTreeVisualizer:
             sample += [min_value, max_value]
             random.shuffle(sample)
             return sample
-        
+
     def build_random_tree(self, values, current_depth, max_depth):
         if not values or current_depth > max_depth:
             return None
@@ -581,7 +602,7 @@ class BinaryTreeVisualizer:
             self.depth_hint_label.config(text=f"Suggested max depth: {max_depth}")
         except ValueError:
             self.depth_hint_label.config(text="")
-    
+
     def on_clear_tree(self):
         self.root = None
         self.draw_tree(self.root)
@@ -590,59 +611,64 @@ class BinaryTreeVisualizer:
             self.sidebar.update_array_display([])
 
     def on_find_node(self):
-        popup = tk.Toplevel(self.canvas.winfo_toplevel())
-        popup.title("Find Node")
-        popup.geometry("300x150")
-        popup.transient(self.canvas.winfo_toplevel())
+        # Hiển thị hộp thoại nhập giá trị node cần tìm
+        value = simpledialog.askinteger("Find Node", "Enter node value to find:", parent=self.canvas)
+        if value is None:
+            return  # Người dùng bấm Cancel
 
-        # Center the popup
-        popup.update_idletasks()
-        screen_width = popup.winfo_screenwidth()
-        screen_height = popup.winfo_screenheight()
-        popup_width = popup.winfo_width()
-        popup_height = popup.winfo_height()
-        x = (screen_width // 2) - (popup_width // 2)
-        y = (screen_height // 2) - (popup_height // 2)
-        popup.geometry(f"+{x}+{y}")
-
-        # Label căn trái
-        tk.Label(popup, text="Enter value to find:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=10)
-        value_entry = tk.Entry(popup, font=("Arial", 12))
-        value_entry.pack(fill="x", padx=10, pady=(0, 10))
-
-        # Frame chứa nút căn phải
-        button_frame = tk.Frame(popup)
-        button_frame.pack(fill="x", padx=10, pady=10)
-        tk.Label(button_frame).pack(side="left", expand=True)  # Spacer đẩy nút sang phải
-
-        def find_and_highlight():
-            try:
-                value = int(value_entry.get())
-                node = self.find_node_by_value(self.root, value)
+        # Tìm node theo giá trị (duyệt BFS)
+        def find_node(root, val):
+            if not root:
+                return None
+            queue = [root]
+            while queue:
+                node = queue.pop(0)
+                if node and node.val == val:
+                    return node
                 if node:
-                    self.highlighted_node = node
-                    self.draw_tree(self.root)
-                    self.scroll_to_node(node)
-                    popup.destroy()
-                else:
-                    messagebox.showinfo("Not found", f"Node with value {value} not found.")
-            except ValueError:
-                messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
-        cancel_button = tk.Button(button_frame, text="Cancel", command=popup.destroy, font=("Arial", 12), bg="grey", fg="black")
-        cancel_button.pack(side="right", padx=(0, 5))
-        find_button = tk.Button(button_frame, text="Find", command=find_and_highlight, font=("Arial", 12))
-        find_button.pack(side="right", padx=(5, 0))
+                    queue.append(node.left)
+                    queue.append(node.right)
+            return None
+
+        try:
+            found_node = find_node(self.root, value)
+            if found_node:
+                self.highlighted_node = found_node
+                self.draw_tree(self.root)
+                self.scroll_to_node(found_node)
+                messagebox.showinfo("Found", f"Node with value {value} found and highlighted.")
+            else:
+                messagebox.showinfo("Not found", f"Node with value {value} not found.")
+        except ValueError:
+            messagebox.showwarning("Invalid Input", "Please enter a valid integer.")
 
     def find_node_by_value(self, node, value):
         if node is None:
             return None
-        if node.val == value:
-            return node
-        left = self.find_node_by_value(node.left, value)
-        if left:
-            return left
-        return self.find_node_by_value(node.right, value)
-    
+
+        # Define find_node as a local function
+        def find_node(root, val):
+            if not root:
+                return None
+            queue = [root]
+            while queue:
+                n = queue.pop(0)
+                if n and n.val == val:
+                    return n
+                if n:
+                    queue.append(n.left)
+                    queue.append(n.right)
+            return None
+
+        found_node = find_node(self.root, value)
+        if found_node:
+            self.highlighted_node = found_node
+            self.draw_tree(self.root)
+            self.scroll_to_node(found_node)  # Đảm bảo gọi dòng này!
+            messagebox.showinfo("Found", f"Node {value} found and highlighted.")
+        else:
+            messagebox.showwarning("Not Found", f"Node {value} not found in the tree.")    
+
     def save_tree_to_file(self):
         if not self.root:
             messagebox.showwarning("No Tree", "There is no tree to save.")
@@ -674,21 +700,25 @@ class BinaryTreeVisualizer:
             self.sidebar.update_array_display(arr)
 
     def create_random_tree(self, min_val, max_val, depth):
-        
         max_nodes = 2**depth - 1
         all_values = list(range(min_val, max_val + 1))
+
+        if max_nodes < 2:
+            raise ValueError("Cần ít nhất 2 node để chứa min_val và max_val.")
+
+        if len(all_values) < 2:
+            raise ValueError("Khoảng giá trị quá hẹp để chọn min và max khác nhau.")
+
         if max_nodes > len(all_values):
-            values = [random.choice(all_values) for _ in range(max_nodes)]
-            values[0] = min_val
-            values[-1] = max_val
-        else:
-            base_values = all_values.copy()
-            base_values.remove(min_val)
-            if max_val != min_val:
-                base_values.remove(max_val)
-            values = random.sample(base_values, max_nodes - 2)
-            values += [min_val, max_val]
-            random.shuffle(values)
+            raise ValueError("Không đủ giá trị duy nhất để tạo cây với độ sâu này.")
+
+        # Bắt buộc chọn min_val và max_val
+        values = [min_val, max_val]
+        remaining_values = set(all_values) - {min_val, max_val}
+
+        needed = max_nodes - 2
+        values += random.sample(list(remaining_values), needed)
+        random.shuffle(values)
 
         def insert_random(root, val):
             if not root:
@@ -714,6 +744,8 @@ class BinaryTreeVisualizer:
             root = insert_random(root, v)
         return root
 
+
+
     def create_random_binary_tree(self):
         # Gọi hàm create_random_tree của BinaryTreeVisualizer với tham số mặc định hoặc tự lấy từ UI nếu có
         # Ở đây giả sử gọi với min_val=1, max_val=99, num_nodes=10 tạm thời
@@ -735,11 +767,30 @@ class BinaryTreeVisualizer:
             self.sidebar.array = arr
             self.sidebar.update_array_display(arr)
 
+
+
     def zoom_in(self):
         self.zoom *= 1.1
         self.draw_tree(self.root)
 
     def zoom_out(self):
-        if self.zoom > 0.5:  # hoặc 0.7
+        if self.zoom > 0.5:  # hoặc 0.7More actions
             self.zoom /= 1.1
             self.draw_tree(self.root)
+
+    def on_mousewheel(self, event):
+        if hasattr(event, 'delta'):
+            if event.delta > 0:
+                self.zoom_in()
+            else:
+                self.zoom_out()
+        else:
+            # MacOS
+            if event.num == 4:
+                self.zoom_in()
+            elif event.num == 5:
+                self.zoom_out()
+    def update_edit(self):
+        # Ví dụ: vẽ lại cây với dữ liệu hiện tại
+        if self.visualizer:
+            self.visualizer.draw_tree(self.visualizer.root)

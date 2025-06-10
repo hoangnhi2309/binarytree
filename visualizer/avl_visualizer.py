@@ -1,39 +1,29 @@
 import tkinter as tk
 import random
 from visualizer.binary_tree_visualizer import BinaryTreeVisualizer, TreeNode
-
 class AVLVisualizer(BinaryTreeVisualizer):
     def height(self, node):
         return node.height if node else 0
-
     def get_balance(self, node):
         return self.height(node.left) - self.height(node.right) if node else 0
-
     def update_height(self, node):
         node.height = 1 + max(self.height(node.left), self.height(node.right))
-
     def right_rotate(self, y):
         x = y.left
         T2 = x.right
-
         x.right = y
         y.left = T2
-
         self.update_height(y)
         self.update_height(x)
         return x
-
     def left_rotate(self, x):
         y = x.right
         T2 = y.left
-
         y.left = x
         x.right = T2
-
         self.update_height(x)
         self.update_height(y)
         return y
-
     def insert_avl(self, root, key):
         if not root:
             return TreeNode(key)
@@ -43,10 +33,8 @@ class AVLVisualizer(BinaryTreeVisualizer):
             root.right = self.insert_avl(root.right, key)
         else:
             return root  # Không chèn trùng
-
         self.update_height(root)
         balance = self.get_balance(root)
-
         # Xử lý 4 case mất cân bằng
         if balance > 1 and key < root.left.val:  # LL
             return self.right_rotate(root)
@@ -58,14 +46,11 @@ class AVLVisualizer(BinaryTreeVisualizer):
         if balance < -1 and key < root.right.val:  # RL
             root.right = self.right_rotate(root.right)
             return self.left_rotate(root)
-
         return root
-
     def delete_avl(self, root, key):
         # 1. Nếu cây rỗng thì trả về None
         if not root:
             return root
-
         # 2. Tìm node cần xóa theo giá trị key
         if key < root.val:
             root.left = self.delete_avl(root.left, key)
@@ -90,50 +75,37 @@ class AVLVisualizer(BinaryTreeVisualizer):
             root.val = temp.val
             # Xóa node successor trong cây con bên phải
             root.right = self.delete_avl(root.right, temp.val)
-
         # Nếu cây con sau khi xóa trở nên rỗng thì trả về None
         if not root:
             return root
-
         # 3. Cập nhật chiều cao
         self.update_height(root)
-
         # 4. Kiểm tra cân bằng
         balance = self.get_balance(root)
-
         # 5. Xử lý 4 trường hợp mất cân bằng
-
         # Left Left Case
         if balance > 1 and self.get_balance(root.left) >= 0:
             return self.right_rotate(root)
-
         # Left Right Case
         if balance > 1 and self.get_balance(root.left) < 0:
             root.left = self.left_rotate(root.left)
             return self.right_rotate(root)
-
         # Right Right Case
         if balance < -1 and self.get_balance(root.right) <= 0:
             return self.left_rotate(root)
-
         # Right Left Case
         if balance < -1 and self.get_balance(root.right) > 0:
             root.right = self.right_rotate(root.right)
             return self.left_rotate(root)
-
         return root
-
-
     def get_min_value_node(self, node):
         if node is None or node.left is None:
             return node
         return self.get_min_value_node(node.left)
-
     def create_random_tree(self, min_val, max_val, num_nodes):
         if max_val - min_val + 1 < num_nodes:
             tk.messagebox.showerror("Error", "Không đủ số lượng giá trị duy nhất trong khoảng để tạo cây.")
             return None
-
         # Luôn lấy min và max, các giá trị còn lại lấy random
         if num_nodes == 1:
             values = [min_val]
@@ -144,12 +116,10 @@ class AVLVisualizer(BinaryTreeVisualizer):
             middle_nodes = random.sample(middle, num_nodes - 2)
             values = [min_val] + middle_nodes + [max_val]
             random.shuffle(values)
-
         root = None
         for val in values:
             root = self.insert_avl(root, val)
         return root
-
     def on_random_tree(self):
         if hasattr(self, "sidebar") and self.sidebar:
             self.sidebar.on_random_tree()
@@ -169,14 +139,12 @@ class AVLVisualizer(BinaryTreeVisualizer):
             if node.right:
                 queue.append(node.right)
         return result
-
     def print_avl(self, node):
         if not node:
             return
         print(f"Node {node.val}: height={getattr(node, 'height', None)}, balance={self.get_balance(node)}")
         self.print_avl(node.left)
         self.print_avl(node.right)
-
     def show_node_menu(self, event, node):
         menu = tk.Menu(self.canvas, tearoff=0)
         menu.add_command(label="Edit Node", command=lambda: self.edit_node_popup(node))
@@ -188,7 +156,6 @@ class AVLVisualizer(BinaryTreeVisualizer):
             menu.tk_popup(event.x_root, event.y_root)
         finally:
             menu.grab_release()
-
     def insert_node(self):
         popup = tk.Toplevel(self.canvas.winfo_toplevel())
         popup.title("Insert Node")
@@ -196,13 +163,11 @@ class AVLVisualizer(BinaryTreeVisualizer):
         popup.resizable(False, False)
         popup.transient(self.canvas.winfo_toplevel())
         popup.grab_set()
-
         # Center the popup
         popup.update_idletasks()
         x = popup.winfo_screenwidth() // 2 - 160
         y = popup.winfo_screenheight() // 2 - 75
         popup.geometry(f"+{x}+{y}")
-
         label = tk.Label(
             popup,
             text="Enter value to insert:",
@@ -210,11 +175,9 @@ class AVLVisualizer(BinaryTreeVisualizer):
             anchor="w"
         )
         label.pack(fill="x", padx=20, pady=(18, 2))
-
         entry = tk.Entry(popup, font=("Arial", 13))
         entry.pack(fill="x", padx=20, pady=(0, 10))
         entry.focus_set()
-
         def apply():
             try:
                 new_val = int(entry.get())
@@ -229,7 +192,6 @@ class AVLVisualizer(BinaryTreeVisualizer):
                 popup.destroy()
             except ValueError:
                 tk.messagebox.showerror("Error", "Please enter a valid integer.")
-
         # Frame cho nút để căn phải
         btn_frame = tk.Frame(popup)
         btn_frame.pack(fill="x", padx=10, pady=(0, 15))
@@ -261,7 +223,6 @@ class AVLVisualizer(BinaryTreeVisualizer):
                 return self.search(node.left, key)
             else:
                 return self.search(node.right, key)
-
     def delete_node_popup(self, node):
         popup = tk.Toplevel(self.canvas.winfo_toplevel())
         popup.title("Delete Node")
@@ -269,19 +230,16 @@ class AVLVisualizer(BinaryTreeVisualizer):
         popup.resizable(False, False)
         popup.transient(self.canvas.winfo_toplevel())
         popup.grab_set()
-
         # Center popup
         popup.update_idletasks()
         x = popup.winfo_screenwidth() // 2 - 170
         y = popup.winfo_screenheight() // 2 - 70
         popup.geometry(f"+{x}+{y}")
-
         label = tk.Label(
             popup,
             text=f"Are you sure you want to delete node {node.val}?",
             font=("Arial", 13, "bold"),
             anchor="center",
-
             fg="black"
         )
         label.pack(fill="x", padx=24, pady=(30, 10))
@@ -315,11 +273,9 @@ class AVLVisualizer(BinaryTreeVisualizer):
         # Hover effect for Cancel
         cancel_btn.bind("<Enter>", lambda e: cancel_btn.config(bg="#d0d0d0"))
         cancel_btn.bind("<Leave>", lambda e: cancel_btn.config(bg="#e0e0e0"))
-
         # Hover effect for Delete
         do_delete.bind("<Enter>", lambda e: do_delete.config(bg="#b71c1c"))
         do_delete.bind("<Leave>", lambda e: do_delete.config(bg="#d32f2f"))
-
     def edit_node_popup(self, node):
         popup = tk.Toplevel(self.canvas.winfo_toplevel())
         popup.title("Edit Node")
@@ -327,16 +283,13 @@ class AVLVisualizer(BinaryTreeVisualizer):
         popup.resizable(False, False)
         popup.transient(self.canvas.winfo_toplevel())
         popup.grab_set()
-
         # Center popup
         popup.update_idletasks()
         x = popup.winfo_screenwidth() // 2 - 160
         y = popup.winfo_screenheight() // 2 - 75
         popup.geometry(f"+{x}+{y}")
-
         label = tk.Label(popup, text=f"Edit node {node.val} to:", font=("Arial", 13), anchor="w")
         label.pack(fill="x", padx=20, pady=(18, 2))
-
         entry = tk.Entry(popup, font=("Arial", 13))
         entry.pack(fill="x", padx=20, pady=(0, 10))
         error_label = tk.Label(popup, text="", fg="red", font=("Arial", 11))
@@ -377,8 +330,6 @@ class AVLVisualizer(BinaryTreeVisualizer):
             menu.tk_popup(event.x_root, event.y_root)
         finally:
             menu.grab_release()
-
-
     def show_balance_factor(self, node):
         bf = self.get_balance(node)
         popup = tk.Toplevel(self.canvas.winfo_toplevel())
@@ -387,13 +338,11 @@ class AVLVisualizer(BinaryTreeVisualizer):
         popup.resizable(False, False)
         popup.transient(self.canvas.winfo_toplevel())
         popup.grab_set()
-
         # Center the popup
         popup.update_idletasks()
         x = popup.winfo_screenwidth() // 2 - 130
         y = popup.winfo_screenheight() // 2 - 60
         popup.geometry(f"+{x}+{y}")
-
         label = tk.Label(
             popup,
             text=f"Node {node.val}\nBalance factor = {bf}",
@@ -402,7 +351,6 @@ class AVLVisualizer(BinaryTreeVisualizer):
             pady=20
         )
         label.pack(expand=True)
-
         close_btn = tk.Button(
             popup,
             text="OK",
@@ -411,4 +359,29 @@ class AVLVisualizer(BinaryTreeVisualizer):
             command=popup.destroy
         )
         close_btn.pack(pady=(0, 15), padx=15, anchor="e", side="right")
+    def update_tree_from_array(self, values):
+        if isinstance(values, str):
+            values = [int(v.strip()) for v in values.split(",") if v.strip()]
+        try:
+            values = [int(v) for v in values]
+        except Exception:
+            tk.messagebox.showerror("Error", "Giá trị không hợp lệ!")
+            return
 
+        # Loại bỏ giá trị trùng lặp, giữ thứ tự xuất hiện đầu tiên
+        unique_values = []
+        for v in values:
+            if v not in unique_values:
+                unique_values.append(v)
+
+        # Xây lại cây AVL từ đầu
+        self.root = None
+        for val in unique_values:
+            self.root = self.insert_avl(self.root, val)
+        self.draw_tree(self.root)
+        if hasattr(self, "sidebar"):
+            self.sidebar.tree_root = self.root
+        if hasattr(self, "sidebar") and hasattr(self.sidebar, "update_array_display"):
+            arr = self.get_array_representation()
+            self.sidebar.update_array_display(arr)
+            print("DEBUG:", type(self.visualizer))
