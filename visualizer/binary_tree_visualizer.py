@@ -651,6 +651,20 @@ class BinaryTreeVisualizer:
         if node is None:
             return None
 
+        # Define find_node as a local function
+        def find_node(root, val):
+            if not root:
+                return None
+            queue = [root]
+            while queue:
+                n = queue.pop(0)
+                if n and n.val == val:
+                    return n
+                if n:
+                    queue.append(n.left)
+                    queue.append(n.right)
+            return None
+
         found_node = find_node(self.root, value)
         if found_node:
             self.highlighted_node = found_node

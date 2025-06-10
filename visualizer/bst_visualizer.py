@@ -288,34 +288,38 @@ class BSTVisualizer(BinaryTreeVisualizer):
 
         x_offset += 1
         x_offset = self._calculate_positions(node.right, depth + 1, x_offset, total_nodes)
-
         return x_offset
+    def on_find_node(self):
+        popup = tk.Toplevel(self.canvas.winfo_toplevel())
+        popup.title("Find Node")
+        popup.geometry("320x130")
+        popup.resizable(False, False)
 
-        if self.tree_root is None:
-            raise ValueError("Không tạo được cây")
+        label = tk.Label(popup, text="Enter value to find:", font=("Arial", 12))
+        label.pack(pady=(10, 0))
 
-        self.visualizer.set_root(self.tree_root)
-        self.visualizer.draw_tree(self.tree_root)
+        entry = tk.Entry(popup, font=("Arial", 12))
+        entry.pack(pady=(0, 10))
 
-        if hasattr(self, "tree_to_array") and hasattr(self, "update_array_display"):
-            self.array = self.tree_to_array(self.tree_root)
-            self.update_array_display(self.array)
+        def find_node():
+            value = entry.get()
+            # Implement the logic to find the node in the BST
+            # If found, highlight the node
+            # If not found, show an error message
+            popup.destroy()
 
-        self.popup.destroy()
+        find_button = tk.Button(popup, text="Find", command=find_node)
+        find_button.pack(pady=(0, 10))
 
-    except Exception as e:
-    print("DEBUG ERROR:", e)
-    tk.messagebox.showerror("Lỗi", "Thông số không hợp lệ hoặc không tạo được cây.")
-
-def show_canvas_menu(self, event, node):
-    menu = tk.Menu(self.canvas, tearoff=0)
-    menu.add_command(label="Find node", command=self.on_find_node)
-    menu.add_command(label="Create random tree", command=self.on_random_tree)
+    def show_canvas_menu(self, event, node):
+        menu = tk.Menu(self.canvas, tearoff=0)
+        menu.add_command(label="Find node", command=self.on_find_node)
+        menu.add_command(label="Create random tree", command=self.on_random_tree)
     # ...
-    try:
-        menu.tk_popup(event.x_root, event.y_root)
-    finally:
-        menu.grab_release()
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
 
 
 # --- Sidebar class chính ---
