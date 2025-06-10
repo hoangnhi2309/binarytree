@@ -559,8 +559,6 @@ class Sidebar(tk.Frame):
             self.array_display.config(state="normal")
             self.array_display.delete("1.0", "end")
             self.array_display.insert("1.0", array_from_tree(root))
-            # Nếu muốn khóa lại sau khi chỉnh sửa thì bật dòng sau:
-            # self.array_display.config(state="disabled")
 
             orphans = set(node_map.keys()) - linked
             if orphans:

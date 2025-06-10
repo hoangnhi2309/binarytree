@@ -687,28 +687,25 @@ class BinaryTreeVisualizer:
             arr = self.tree_to_array(self.root)
             self.sidebar.array = arr
             self.sidebar.update_array_display(arr)
-
     def create_random_tree(self, min_val, max_val, depth):
-        max_nodes = 2**depth - 1
+        import random
+
+        max_nodes = 2 ** depth - 1
         all_values = list(range(min_val, max_val + 1))
 
         if max_nodes < 2:
             raise ValueError("Cần ít nhất 2 node để chứa min_val và max_val.")
 
-        if len(all_values) < 2:
-            raise ValueError("Khoảng giá trị quá hẹp để chọn min và max khác nhau.")
-
-        if max_nodes > len(all_values):
+        if len(all_values) < max_nodes:
             raise ValueError("Không đủ giá trị duy nhất để tạo cây với độ sâu này.")
 
-        # Bắt buộc chọn min_val và max_val
-        values = [min_val, max_val]
+        # Đảm bảo có min_val và max_val trong cây
         remaining_values = set(all_values) - {min_val, max_val}
-
-        needed = max_nodes - 2
-        values += random.sample(list(remaining_values), needed)
+        values = random.sample(list(remaining_values), max_nodes - 2)
+        values.extend([min_val, max_val])
         random.shuffle(values)
 
+        # Hàm chèn node vào cây một cách ngẫu nhiên
         def insert_random(root, val):
             if not root:
                 return TreeNode(val)
@@ -728,11 +725,11 @@ class BinaryTreeVisualizer:
                         node = node.right
             return root
 
+        # Dựng cây từ danh sách đã shuffle
         root = None
         for v in values:
             root = insert_random(root, v)
         return root
-
 
 
     def create_random_binary_tree(self):
