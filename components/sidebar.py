@@ -162,40 +162,52 @@ class Sidebar(tk.Frame):
         if not self.tree_root:
             self.show_toast_notification("No tree to save.")
             return
+
         file_path = asksaveasfilename(
             defaultextension=".txt",
             filetypes=[("Text Files", "*.txt")],
             title="Save Tree As"
         )
         if not file_path:
-            return  # Người dùng bấm Cancel
+            return
+
         from visualizer.binary_tree_visualizer import BinaryTreeVisualizer
         from visualizer.bst_visualizer import BSTVisualizer
         from visualizer.avl_visualizer import AVLVisualizer
-        if isinstance(self.visualizer, BinaryTreeVisualizer) and not isinstance(self.visualizer, (BSTVisualizer, AVLVisualizer)):
-            # Binary Tree: giữ nguyên
-            result = []
-            def dfs(node):
-                if not node:
-                    return
-                left_val = node.left.val if node.left else 0
-                right_val = node.right.val if node.right else 0
-                result.append(f"{node.val}, {left_val}, {right_val}")
-                dfs(node.left)
-                dfs(node.right)
-            dfs(self.tree_root)
-            content = "\n".join(result)
-        else:
-            # BST/AVL: chỉ lưu các giá trị khác 0, dãy ngang
-            array = self.tree_to_array(self.tree_root)
-            filtered = [str(v) for v in array if v != 0]
-            content = ", ".join(filtered)
+
         try:
+            if isinstance(self.visualizer, BinaryTreeVisualizer) and not isinstance(self.visualizer, (BSTVisualizer, AVLVisualizer)):
+                result = []
+                queue = [self.tree_root]
+
+                while queue:
+                    current = queue.pop(0)
+                    if not current:
+                        continue
+
+                    left_val = current.left.val if current.left else 0
+                    right_val = current.right.val if current.right else 0
+                    result.append(f"{current.val}, {left_val}, {right_val}")
+
+                    queue.append(current.left)
+                    queue.append(current.right)
+
+                content = "\n".join(result)
+            else:
+                # Với BST / AVL
+                array = self.tree_to_array(self.tree_root)
+                filtered = [str(v) for v in array if v != 0]
+                content = ", ".join(filtered)
+
             with open(file_path, "w") as f:
                 f.write(content)
+
             self.show_toast_notification(f"Tree successfully saved to \n{file_path}")
+
         except Exception as e:
             self.show_toast_notification(f"Error saving file \n{e}")
+
+
     def show_toast_notification(self, message, duration=3000):
         toast = tk.Toplevel(self.master)
         toast.overrideredirect(True)
@@ -223,6 +235,7 @@ class Sidebar(tk.Frame):
         height = label.winfo_reqheight() + 20
         toast.geometry(f"{width}x{height}+{x}+{y}")
         toast.after(duration, toast.destroy)
+
     def load_tree_from_file(self):
         file_path = askopenfilename(
             defaultextension=".txt",
@@ -233,8 +246,26 @@ class Sidebar(tk.Frame):
             return
         try:
             with open(file_path, "r") as f:
-                lines = f.readlines()
-            node_map = {}
+                content = f.read()
+
+            from visualizer.bst_visualizer import BSTVisualizer
+            from visualizer.avl_visualizer import AVLVisualizer
+
+            # Nếu là BST/AVL: file là mảng giá trị
+            if isinstance(self.visualizer, (BSTVisualizer, AVLVisualizer)):
+                # Hỗ trợ cả dạng "1,2,3" hoặc từng dòng một số
+                if "," in content:
+                    values = [int(v.strip()) for v in content.split(",") if v.strip()]
+                else:
+                    values = [int(line.strip()) for line in content.splitlines() if line.strip()]
+                self.visualizer.update_tree_from_array(values)
+                self.tree_root = self.visualizer.root
+                self.show_toast_notification(f"Tree loaded from \n{file_path}")
+                return
+
+            # Nếu là BinaryTree: file là từng dòng "node, left, right"
+            lines = [line.strip() for line in content.splitlines() if line.strip()]
+            node_list = []
             for line in lines:
                 parts = line.strip().split(",")
                 if len(parts) != 3:
@@ -242,27 +273,25 @@ class Sidebar(tk.Frame):
                 node_val = int(parts[0].strip())
                 left_val = int(parts[1].strip())
                 right_val = int(parts[2].strip())
-                node_map[node_val] = (left_val, right_val)
-            nodes = {}
-            def get_node(val):
-                if val == 0:
-                    return None
-                if val not in nodes:
-                    nodes[val] = TreeNode(val)
-                return nodes[val]
-            for val, (l_val, r_val) in node_map.items():
-                node = get_node(val)
-                node.left = get_node(l_val)
-                node.right = get_node(r_val)
-            root_val = int(lines[0].strip().split(",")[0])
-            root = get_node(root_val)
+                node_list.append((node_val, left_val, right_val))
+
+            tree_nodes = [TreeNode(val) for val, _, _ in node_list]
+            # Gán left và right theo thứ tự dòng
+            for i, (val, l_val, r_val) in enumerate(node_list):
+                node = tree_nodes[i]
+                if l_val != 0:
+                    node.left = next((n for n in tree_nodes if n.val == l_val and n != node and n != node.right), TreeNode(l_val))
+                if r_val != 0:
+                    node.right = next((n for n in tree_nodes if n.val == r_val and n != node and n != node.left), TreeNode(r_val))
+
+            root = tree_nodes[0]
             self.tree_root = root
-            # Vẽ lại cây
+            self.visualizer.set_root(root)
             self.visualizer.draw_tree(self.tree_root)
-            # Cập nhật mảng nếu bạn cần
             array_representation = self.tree_to_array(self.tree_root)
             self.update_array_display(array_representation)
             self.show_toast_notification(f"Tree loaded from \n{file_path}")
+
         except Exception as e:
             self.show_toast_notification(f"Error loading file \n{e}")
     def on_search_node(self):
@@ -291,10 +320,17 @@ class Sidebar(tk.Frame):
         return self._find_node(root.right, value)
     
     def on_random_tree(self):
+            # Nếu popup đã mở thì không mở thêm
+        if hasattr(self, "popup") and self.popup and tk.Toplevel.winfo_exists(self.popup):
+            self.popup.lift()
+            self.popup.focus_force()
+            return
         self.popup = tk.Toplevel(self)
         self.popup.title("Create Random Tree")
         self.popup.geometry("300x250")
         self.popup.transient(self.winfo_toplevel())
+        self.popup.grab_set()  # Modal: khóa cửa sổ cha cho đến khi đóng popup    self.popup.grab_set()  # Modal: khóa cửa sổ cha cho đến khi đóng popup
+        self.popup.focus_force()  
         tk.Label(self.popup, text="Min Value:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(10, 2))
         self.min_entry = tk.Entry(self.popup, font=("Arial", 12))
         self.min_entry.insert(0, "1")
@@ -303,19 +339,46 @@ class Sidebar(tk.Frame):
         self.max_entry = tk.Entry(self.popup, font=("Arial", 12))
         self.max_entry.insert(0, "99")
         self.max_entry.pack(fill="x", padx=10, pady=(0, 10))
+
         from visualizer.binary_tree_visualizer import BinaryTreeVisualizer
         from visualizer.bst_visualizer import BSTVisualizer
         from visualizer.avl_visualizer import AVLVisualizer
+
         if isinstance(self.visualizer, BinaryTreeVisualizer) and not isinstance(self.visualizer, (BSTVisualizer, AVLVisualizer)):
             label_text = "Tree Depth:"
             default_value = "3"
+            tk.Label(self.popup, text=label_text, font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(0, 2))
+            # Thêm label cảnh báo
+            self.depth_warning_label = tk.Label(self.popup, text="", fg="red", font=("Arial", 10))
+            self.depth_warning_label.pack(fill="x", padx=10, pady=(0, 2))
+            # Entry có validate
+            def validate_depth(new_value):
+                if not new_value:
+                    self.depth_warning_label.config(text="")
+                    return True
+                try:
+                    v = int(new_value)
+                    if 1 <= v <= 7:
+                        self.depth_warning_label.config(text="")
+                        return True
+                    else:
+                        self.depth_warning_label.config(text="Depth must be from 1 to 7.")
+                        return False
+                except ValueError:
+                    self.depth_warning_label.config(text="Depth must be an integer.")
+                    return False
+            vcmd = (self.popup.register(validate_depth), '%P')
+            self.depth_entry = tk.Entry(self.popup, font=("Arial", 12), validate="key", validatecommand=vcmd)
+            self.depth_entry.insert(0, default_value)
+            self.depth_entry.pack(fill="x", padx=10, pady=(0, 10))
         else:
             label_text = "Number of Nodes:"
             default_value = "10"
-        tk.Label(self.popup, text=label_text, font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(0, 2))
-        self.depth_entry = tk.Entry(self.popup, font=("Arial", 12))
-        self.depth_entry.insert(0, default_value)
-        self.depth_entry.pack(fill="x", padx=10, pady=(0, 10))
+            tk.Label(self.popup, text=label_text, font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(0, 2))
+            self.depth_entry = tk.Entry(self.popup, font=("Arial", 12))
+            self.depth_entry.insert(0, default_value)
+            self.depth_entry.pack(fill="x", padx=10, pady=(0, 10))
+
         button_frame = tk.Frame(self.popup)
         button_frame.pack(pady=10, padx=10, fill="x")
         tk.Label(button_frame).pack(side="left", expand=True)
@@ -323,6 +386,7 @@ class Sidebar(tk.Frame):
         cancel_button.pack(side="right", padx=(0, 5))
         create_button = tk.Button(button_frame, text="Create", command=self.handle_create_tree, font=("Arial", 12), bg="grey")
         create_button.pack(side="right", padx=(5, 0))
+        self.popup.bind("<Return>", lambda e: self.handle_create_tree())
     def handle_create_tree(self):
         try:
             min_val = int(self.min_entry.get())
@@ -330,15 +394,27 @@ class Sidebar(tk.Frame):
             extra = int(self.depth_entry.get())  # depth hoặc số node tùy loại cây
             if min_val > max_val or extra <= 0:
                 raise ValueError("Min > Max hoặc extra <= 0")
-            # Gọi create_random_tree tùy theo loại visualizer
             vis = self.visualizer
             if vis is None:
                 raise ValueError("Chưa có visualizer")
 
-            # Tạo cây mới
-            self.tree_root = vis.create_random_tree(min_val, max_val, extra)
-            self.visualizer.set_root(self.tree_root)
-            self.visualizer.draw_tree(self.tree_root)
+            from visualizer.binary_tree_visualizer import BinaryTreeVisualizer
+            from visualizer.bst_visualizer import BSTVisualizer
+            from visualizer.avl_visualizer import AVLVisualizer
+
+            if isinstance(vis, BinaryTreeVisualizer) and not isinstance(vis, (BSTVisualizer, AVLVisualizer)):
+                # Binary Tree: random array + dựng cây theo level-order
+                arr = vis.generate_random_tree_array(min_val, max_val, extra)
+                tree_root = vis.array_to_tree_level_order(arr)
+                vis.set_root(tree_root)
+                vis.draw_tree(tree_root)
+                self.tree_root = tree_root
+            else:
+                # BST/AVL: dùng create_random_tree như cũ
+                tree_root = vis.create_random_tree(min_val, max_val, extra)
+                vis.set_root(tree_root)
+                vis.draw_tree(tree_root)
+                self.tree_root = tree_root
 
             # Cập nhật mảng nếu có
             if hasattr(self, "tree_to_array") and hasattr(self, "update_array_display"):

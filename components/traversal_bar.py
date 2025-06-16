@@ -184,20 +184,24 @@ class TraversalBar(tk.Frame):
         self.output_display.insert("1.0", "Traversal result: ")
 
         base_len = len("Traversal result: ")
+        arrow = " → "
         for i, node in enumerate(self.traversal_nodes[:self.traversal_index]):
             node_str = str(node.val)
+            # Chèn node
             self.output_display.insert(tk.END, node_str)
-
+            start = base_len
+            end = start + len(node_str)
+            # Bôi đậm node cuối cùng (node đang duyệt)
             if i == self.traversal_index - 1:
-                start = base_len
-                end = start + len(node_str)
                 self.output_display.tag_add("bold", f"1.{start}", f"1.{end}")
                 self.output_display.tag_config("bold", font=("Arial", 12, "bold"))
-
             base_len += len(node_str)
+            # Chèn mũi tên nếu chưa phải node cuối cùng
             if i < self.traversal_index - 1:
-                self.output_display.insert(tk.END, " -> ")
-                base_len += 4
+                self.output_display.insert(tk.END, arrow)
+                self.output_display.tag_add("arrow", f"1.{base_len}", f"1.{base_len + len(arrow)}")
+                self.output_display.tag_config("arrow", foreground="#0078D4", font=("Arial", 12, "bold"))
+                base_len += len(arrow)
 
         self.output_display.config(state="disabled")
 

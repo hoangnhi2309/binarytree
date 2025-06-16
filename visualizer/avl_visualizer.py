@@ -1,6 +1,7 @@
 import tkinter as tk
 import random
 from visualizer.binary_tree_visualizer import BinaryTreeVisualizer, TreeNode
+from tkinter.filedialog import asksaveasfilename, askopenfilename
 class AVLVisualizer(BinaryTreeVisualizer):
     def height(self, node):
         return node.height if node else 0
@@ -139,6 +140,71 @@ class AVLVisualizer(BinaryTreeVisualizer):
             if node.right:
                 queue.append(node.right)
         return result
+    def save_tree_to_file(self):
+        file_path = asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("Text Files", "*.txt")],
+            title="Save Tree As"
+        )
+        if not file_path:
+            return
+
+        # Lưu theo preorder traversal
+        def preorder(node, arr):
+            if not node:
+                return
+            arr.append(node.val)
+            preorder(node.left, arr)
+            preorder(node.right, arr)
+        arr = []
+        preorder(self.root, arr)
+        content = ", ".join(str(v) for v in arr)
+
+        try:
+            with open(file_path, "w") as f:
+                f.write(content)
+            if hasattr(self, "sidebar") and hasattr(self.sidebar, "show_toast_notification"):
+                self.sidebar.show_toast_notification("Tree successfully saved to \n" + file_path)
+        except Exception as e:
+            if hasattr(self, "sidebar") and hasattr(self.sidebar, "show_toast_notification"):
+                self.sidebar.show_toast_notification(f"Error saving file \n{e}")
+        
+    def load_tree_from_file(self):
+        file_path = askopenfilename(
+            defaultextension=".txt",
+            filetypes=[("Text Files", "*.txt")],
+            title="Open Tree File"
+        )
+        if not file_path:
+            return
+        try:
+            with open(file_path, "r") as f:
+                content = f.read()
+            # Hỗ trợ cả dạng "1,2,3" hoặc từng dòng một số
+            if "," in content:
+                values = [int(v.strip()) for v in content.split(",") if v.strip()]
+            else:
+                values = [int(line.strip()) for line in content.splitlines() if line.strip()]
+            if not values:
+                tk.messagebox.showerror("Error", "File is empty or invalid!")
+                return
+            unique_values = []
+            for v in values:
+                if v not in unique_values:
+                    unique_values.append(v)
+            self.root = None
+            for val in unique_values:
+                self.root = self.insert_avl(self.root, val)
+            self.draw_tree(self.root)
+            if hasattr(self, "sidebar") and hasattr(self.sidebar, "update_array_display"):
+                arr = self.get_array_representation()
+                self.sidebar.update_array_display(arr)
+            if hasattr(self, "sidebar") and hasattr(self.sidebar, "show_toast_notification"):
+                self.sidebar.show_toast_notification(f"Tree loaded from \n{file_path}")
+        except Exception as e:
+            tk.messagebox.showerror("Error", f"Error loading file: {e}")
+            if hasattr(self, "sidebar") and hasattr(self.sidebar, "show_toast_notification"):
+                self.sidebar.show_toast_notification(f"Error loading file \n{e}")
     def print_avl(self, node):
         if not node:
             return
@@ -192,6 +258,7 @@ class AVLVisualizer(BinaryTreeVisualizer):
                 popup.destroy()
             except ValueError:
                 tk.messagebox.showerror("Error", "Please enter a valid integer.")
+        entry.bind("<Return>", lambda e: apply())
         # Frame cho nút để căn phải
         btn_frame = tk.Frame(popup)
         btn_frame.pack(fill="x", padx=10, pady=(0, 15))
@@ -251,6 +318,7 @@ class AVLVisualizer(BinaryTreeVisualizer):
                 arr = self.get_array_representation()
                 self.sidebar.update_array_display(arr)
             popup.destroy()
+
         btn_frame = tk.Frame(popup)
         btn_frame.pack(fill="x", padx=10, pady=(0, 15))
         cancel_btn = tk.Button(
@@ -314,6 +382,7 @@ class AVLVisualizer(BinaryTreeVisualizer):
                 popup.destroy()
             except ValueError:
                 error_label.config(text="Please enter a valid integer.")
+        entry.bind("<Return>", lambda e: apply_edit())
         btn_frame = tk.Frame(popup) 
         btn_frame.pack(fill="x", padx=10, pady=(0, 15))
         cancel_btn = tk.Button(btn_frame, text="Cancel", font=("Arial", 12), width=10, command=popup.destroy)
@@ -385,4 +454,4 @@ class AVLVisualizer(BinaryTreeVisualizer):
         if hasattr(self, "sidebar") and hasattr(self.sidebar, "update_array_display"):
             arr = self.get_array_representation()
             self.sidebar.update_array_display(arr)
-            print("DEBUG:", type(self.visualizer))
+    
