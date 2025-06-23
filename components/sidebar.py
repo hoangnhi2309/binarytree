@@ -97,6 +97,18 @@ class Sidebar(tk.Frame):
         self.create_modern_button("Delete tree", self.on_clear_tree)
         self.create_modern_button("Save to file", self.save_tree_to_file)
         self.create_modern_button("Load from file", self.load_tree_from_file)
+    def set_visualizer(self, visualizer):
+        self.visualizer = visualizer
+        self.tree_root = getattr(visualizer, "root", None)
+        self.reset_search()
+        # Reset trạng thái tìm kiếm
+        self.highlighted_node = None
+        if hasattr(self.visualizer, "highlighted_node"):
+            self.visualizer.highlighted_node = None
+        # Reset ô tìm kiếm nếu có
+        if hasattr(self, "search_entry"):
+            self.search_entry.delete(0, "end")
+
     def create_modern_button(self, text, command):
         btn = tk.Button(self, text=text, command=command, font=("Arial", 12), bg="grey", fg="white")
         btn.pack(pady=5, padx=10, fill="x")
@@ -358,11 +370,11 @@ class Sidebar(tk.Frame):
                     return True
                 try:
                     v = int(new_value)
-                    if 1 <= v <= 7:
+                    if 1 <= v <= 6:
                         self.depth_warning_label.config(text="")
                         return True
                     else:
-                        self.depth_warning_label.config(text="Depth must be from 1 to 7.")
+                        self.depth_warning_label.config(text="Depth must be from 1 to 6.")
                         return False
                 except ValueError:
                     self.depth_warning_label.config(text="Depth must be an integer.")
@@ -387,7 +399,16 @@ class Sidebar(tk.Frame):
         create_button = tk.Button(button_frame, text="Create", command=self.handle_create_tree, font=("Arial", 12), bg="grey")
         create_button.pack(side="right", padx=(5, 0))
         self.popup.bind("<Return>", lambda e: self.handle_create_tree())
+        self.popup.update_idletasks()
+        screen_width = self.popup.winfo_screenwidth()
+        screen_height = self.popup.winfo_screenheight()
+        popup_width = 300  # Đúng với self.popup.geometry("300x250") phía trên
+        popup_height = 250
+        x = (screen_width // 2) - (popup_width // 2)
+        y = (screen_height // 2) - (popup_height // 2)
+        self.popup.geometry(f"300x250+{x}+{y}")
     def handle_create_tree(self):
+        self.reset_search()
         try:
             min_val = int(self.min_entry.get())
             max_val = int(self.max_entry.get())
@@ -518,6 +539,7 @@ class Sidebar(tk.Frame):
     def on_clear_tree(self):
         self.tree_root = None
         self.array = []
+        self.reset_search()
         self.highlighted_node = None
         self.update_array_display([])
         if self.visualizer:
@@ -659,3 +681,15 @@ class Sidebar(tk.Frame):
             self.tree_root = self.visualizer.root
             self.show_toast_notification("Tree update successful.")
             return
+    def reset_search(self):
+        # Reset biến highlight
+        self.highlighted_node = None
+        if self.visualizer and hasattr(self.visualizer, "highlighted_node"):
+            self.visualizer.highlighted_node = None
+        # Xóa nội dung ô search nếu có
+        if hasattr(self, "search_entry"):
+            self.search_entry.delete(0, "end")
+        # Đóng popup kết quả tìm kiếm nếu có
+        if hasattr(self, "result_popup") and self.result_popup:
+            self.result_popup.destroy()
+            self.result_popup = None

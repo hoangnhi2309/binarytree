@@ -192,6 +192,7 @@ class BSTVisualizer(BinaryTreeVisualizer):
             self.sidebar.on_random_tree()
         else:
             tk.messagebox.showerror("Error", "Sidebar not found!")
+
     def get_array_representation(self):
         from collections import deque
         if not self.root:
@@ -248,7 +249,7 @@ class BSTVisualizer(BinaryTreeVisualizer):
         x = (screen_width // 2) - (popup_width // 2)
         y = (screen_height // 2) - (popup_height // 2)
         popup.geometry(f"+{x}+{y}")
-        tk.Label(popup, text="Enter node value to find:", font=("Arial", 12)).pack(fill="x", padx=10, pady=(15, 5))
+        tk.Label(popup, text="Enter node value to find:", font=("Arial", 12),anchor="w").pack(fill="x", padx=10, pady=(15, 5))
         value_entry = tk.Entry(popup, font=("Arial", 12))
         value_entry.pack(fill="x", padx=10, pady=(0, 10))
         value_entry.focus_set()
@@ -443,3 +444,27 @@ class BSTVisualizer(BinaryTreeVisualizer):
             else:
                 import tkinter.messagebox as messagebox
                 messagebox.showerror("Error", f"Error loading file \n{e}")
+    def get_subtree_width(self, node):
+        if not node:
+            return 0
+        if not node.left and not node.right:
+            return 1
+        return self.get_subtree_width(node.left) + self.get_subtree_width(node.right)
+    def draw_node(self, node, x, y, x_offset):
+        if not node:
+            return
+        # Vẽ node tại (x, y)
+        self.draw_circle(x, y, node.val)
+        # Tính chiều rộng subtree trái/phải
+        left_width = self.get_subtree_width(node.left)
+        right_width = self.get_subtree_width(node.right)
+        # Khoảng cách tối thiểu giữa các node
+        min_gap = 40  # hoặc 50, tùy kích thước node
+        if node.left:
+            child_x = x - (right_width + 1) * min_gap
+            self.draw_line(x, y, child_x, y + 80)
+            self.draw_node(node.left, child_x, y + 80, x_offset // 2)
+        if node.right:
+            child_x = x + (left_width + 1) * min_gap
+            self.draw_line(x, y, child_x, y + 80)
+            self.draw_node(node.right, child_x, y + 80, x_offset // 2)

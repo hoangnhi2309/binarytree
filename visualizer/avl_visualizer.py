@@ -122,10 +122,12 @@ class AVLVisualizer(BinaryTreeVisualizer):
             root = self.insert_avl(root, val)
         return root
     def on_random_tree(self):
+        
         if hasattr(self, "sidebar") and self.sidebar:
             self.sidebar.on_random_tree()
         else:
             tk.messagebox.showerror("Error", "Sidebar not found!")
+            
     def get_array_representation(self):
         from collections import deque
         if not self.root:

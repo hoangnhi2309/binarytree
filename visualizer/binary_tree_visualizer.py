@@ -487,6 +487,7 @@ class BinaryTreeVisualizer:
         self.popup.title("Create Random Tree")
         self.popup.geometry("300x250")
         self.popup.transient(self.canvas.winfo_toplevel())
+        self.reset_search()
 
         tk.Label(self.popup, text="Min Value:", font=("Arial", 12), anchor="w").pack(fill="x", padx=10, pady=(10, 2))
         self.min_entry = tk.Entry(self.popup, font=("Arial", 12))
@@ -515,7 +516,7 @@ class BinaryTreeVisualizer:
                     return True
                 try:
                     v = int(new_value)
-                    if 1 <= v <= 7:
+                    if 1 <= v <= 6:
                         self.depth_warning_label.config(text="")
                         return True
                     else:
@@ -547,6 +548,14 @@ class BinaryTreeVisualizer:
         # --- BIND ENTER CHO TẤT CẢ ENTRY ---
         for entry in [self.min_entry, self.max_entry, self.depth_entry]:
             entry.bind("<Return>", lambda e: self.create_tree_and_close())
+        self.popup.update_idletasks()
+        screen_width = self.popup.winfo_screenwidth()
+        screen_height = self.popup.winfo_screenheight()
+        popup_width = self.popup.winfo_width()
+        popup_height = self.popup.winfo_height()
+        x = (screen_width // 2) - (popup_width // 2)
+        y = (screen_height // 2) - (popup_height // 2)
+        self.popup.geometry(f"+{x}+{y}")       
     def create_tree_and_close(self):
         try:
             min_value = int(self.min_entry.get())
@@ -591,6 +600,7 @@ class BinaryTreeVisualizer:
                 self.root = tree_root
                 self.draw_tree(self.root)
                 if self.sidebar:
+                    self.sidebar.tree_root = self.root       
                     new_array = self.tree_to_array(self.root)
                     self.sidebar.array = new_array
                     self.sidebar.update_array_display(new_array)
@@ -1008,3 +1018,12 @@ class BinaryTreeVisualizer:
         if hasattr(self, "sidebar") and hasattr(self.sidebar, "update_array_display"):
             arr = self.tree_to_array(root)
             self.sidebar.update_array_display(arr)
+    def reset_search(self):
+        self.highlighted_node = None
+        if hasattr(self, "sidebar") and self.sidebar:
+            self.sidebar.highlighted_node = None
+            if hasattr(self.sidebar, "search_entry"):
+                self.sidebar.search_entry.delete(0, "end")
+            if hasattr(self.sidebar, "result_popup") and self.sidebar.result_popup:
+                self.sidebar.result_popup.destroy()
+                self.sidebar.result_popup = None
